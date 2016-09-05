@@ -1,3 +1,3 @@
-export(rev.plot.output, rev.process.output)
+export(rev.plot.div.rates, rev.process.div.rates)
 
 import(ape,coda)
