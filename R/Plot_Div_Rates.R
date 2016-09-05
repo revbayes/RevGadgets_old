@@ -156,10 +156,10 @@ rev.process.div.rates = function(speciation_times_file="",speciation_rates_file=
   s <- readLines(speciation_times_file)[lines_to_skip+1]
   while ( substring(s, 1, 1) == "#" ) {
     lines_to_skip <- lines_to_skip + 1
-    s <- readLines(file_names[1])[lines_to_skip+1]
+    s <- readLines(speciation_times_file)[lines_to_skip+1]
   }
   
-  cols <- strsplit(readLines(file_names[1])[lines_to_skip+1],"\t")[[1]]
+  cols <- strsplit(readLines(speciation_times_file)[lines_to_skip+1],"\t")[[1]]
   col_headers <- c("Iteration","Posterior","Likelihood","Prior")
   cols_to_skip <- sum(col_headers %in% cols)
   
