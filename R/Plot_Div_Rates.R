@@ -2,10 +2,10 @@
 #
 # @brief Plotting the output of a episodic diversification rate analysis with mass-extinction events.
 #
-# @date Last modified: 2014-10-05
+# @date Last modified: 2019-09-05
 # @author Michael R May and Sebastian Hoehna
 # @version 1.0
-# @since 2014-10-04, version 1.0.0
+# @since 2016-08-31, version 1.0.0
 #
 # @param    output            list          The processed output for plotting.
 # @param    fig.types         character     Which aspects of the model to visualize. See details for a complete description.
@@ -20,7 +20,7 @@
 #
 ################################################################################
 
-rev.plot.output = function(output,fig.types=c("speciation rates", "extinction rates", "net-diversification rates","relative-extinction rates"),
+rev.plot.div.rates = function(output,fig.types=c("speciation rates", "extinction rates", "net-diversification rates","relative-extinction rates"),
                             xlab="million years ago",col=NULL,col.alpha=50,
                             xaxt="n",yaxt="s",pch=19,plot.tree=FALSE,
                             ...){
@@ -127,10 +127,10 @@ rev.plot.output = function(output,fig.types=c("speciation rates", "extinction ra
 #
 # @brief Processing the output of a episodic diversification rate analysis with mass-extinction events.
 #
-# @date Last modified: 2014-10-05
+# @date Last modified: 2016-09-05
 # @author Michael R May and Sebastian Hoehna
-# @version 2.0
-# @since 2014-10-04, version 2.0.0
+# @version 1.0
+# @since 2016-08-31, version 1.0.0
 #
 # @param    dir                         character      The directory from which the CoMET output will be read.
 # @param    tree                        phylo          The tree analyzed with CoMET in phylo format. By default, looks for a tree in the target directory.
@@ -143,7 +143,7 @@ rev.plot.output = function(output,fig.types=c("speciation rates", "extinction ra
 #
 ################################################################################
 
-rev.process.output = function(file_names,tree,burnin=0.25,numIntervals=100){
+rev.process.div.rates = function(speciation_times_file="",speciation_rates_file="",extinction_times_file="",extinction_rates_file="",tree,burnin=0.25,numIntervals=100){
 
 #  files <- list.files(dir,full.names=TRUE)
 
@@ -153,7 +153,7 @@ rev.process.output = function(file_names,tree,burnin=0.25,numIntervals=100){
 
   # Process the speciation rates
   lines_to_skip <- 0
-  s <- readLines(file_names[1])[lines_to_skip+1]
+  s <- readLines(speciation_times_file)[lines_to_skip+1]
   while ( substring(s, 1, 1) == "#" ) {
     lines_to_skip <- lines_to_skip + 1
     s <- readLines(file_names[1])[lines_to_skip+1]
@@ -163,8 +163,8 @@ rev.process.output = function(file_names,tree,burnin=0.25,numIntervals=100){
   col_headers <- c("Iteration","Posterior","Likelihood","Prior")
   cols_to_skip <- sum(col_headers %in% cols)
   
-  speciationRateChangeTimes   <- strsplit(readLines(file_names[1])[-(1:(lines_to_skip+1))],"\t")
-  speciationRates             <- strsplit(readLines(file_names[2])[-(1:(lines_to_skip+1))],"\t")
+  speciationRateChangeTimes   <- strsplit(readLines(speciation_times_file)[-(1:(lines_to_skip+1))],"\t")
+  speciationRates             <- strsplit(readLines(speciation_rates_file)[-(1:(lines_to_skip+1))],"\t")
   speciationBurnin            <- length(speciationRates) * burnin
 
   processSpeciationRates <- as.mcmc(do.call(rbind,lapply(speciationBurnin:length(speciationRateChangeTimes),function(sample) {
@@ -181,8 +181,8 @@ rev.process.output = function(file_names,tree,burnin=0.25,numIntervals=100){
   
 
   # Process the extinction rates
-  extinctionRateChangeTimes   <- strsplit(readLines(file_names[3])[-(1:(lines_to_skip+1))],"\t")
-  extinctionRates             <- strsplit(readLines(file_names[4])[-(1:(lines_to_skip+1))],"\t")
+  extinctionRateChangeTimes   <- strsplit(readLines(extinction_times_file)[-(1:(lines_to_skip+1))],"\t")
+  extinctionRates             <- strsplit(readLines(extinction_rates_file)[-(1:(lines_to_skip+1))],"\t")
   extinctionBurnin            <- length(extinctionRates) * burnin
 
   processExtinctionRates <- as.mcmc(do.call(rbind,lapply(extinctionBurnin:length(extinctionRateChangeTimes),function(sample) {
