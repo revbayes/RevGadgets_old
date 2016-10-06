@@ -21,3 +21,12 @@ Install RevGadgets directly from GitHub:
 ```R
 install_github("revbayes/RevGadgets")
 ```
+
+### Note about ggtree dependency:
+
+RevGadgets requires ggtree version 1.5.14 or greater.
+This can be installed directly from GitHub:
+
+```R
+install_github("GuangchuangYu/ggtree")
+```
