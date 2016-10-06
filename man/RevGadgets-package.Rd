@@ -14,7 +14,7 @@ License: \tab GPL-3\cr
 LazyLoad: \tab yes\cr
 }
 }
-\author{Sebastian Hoehna
+\author{Sebastian Hoehna and Will A. Freyman
 
 Maintainer: Sebastian Hoehna <Sebastian.Hoehna@gmail.com>
 }
