@@ -141,15 +141,17 @@ plot_ancestral_states = function(tree_file,
                                  ylim_visible=NULL,
                                  tip_label_size=4, 
                                  tip_label_offset=3,
+                                 tip_label_italics=FALSE,
                                  node_label_size=4, 
-                                 node_label_hjust=-0.2, 
+                                 node_label_nudge_x=0.1, 
                                  shoulder_label_size=3, 
-                                 shoulder_label_hjust=1.5, 
+                                 shoulder_label_nudge_x=-0.1, 
                                  alpha=0.5, 
                                  node_size_range=c(6, 15), 
                                  color_low="#D55E00",
                                  color_mid="#F0E442",
-                                 color_high="#009E73") { 
+                                 color_high="#009E73",
+                                 ...) { 
 
     if (!(summary_statistic %in% c("MAP", "mean", "MAPChromosome"))) {
         print("Invalid summary statistic.")
@@ -163,9 +165,13 @@ plot_ancestral_states = function(tree_file,
 
     # remove underscores from tip labels
     attributes(t)$phylo$tip.label = gsub("_", " ", attributes(t)$phylo$tip.label)
+    
+    if (tip_label_italics) {
+        attributes(t)$phylo$tip.label = paste("italic('", attributes(t)$phylo$tip.label, "')", sep="")
+    }
 
     # add tip labels
-    p = ggtree(t, layout=tree_layout) + geom_tiplab(size=tip_label_size, offset=tip_label_offset)
+    p = ggtree(t, layout=tree_layout) + geom_tiplab(size=tip_label_size, offset=tip_label_offset, parse=tip_label_italics)
        
 
     if (summary_statistic == "MAPChromosome") {
@@ -178,7 +184,8 @@ plot_ancestral_states = function(tree_file,
             }
 
             # add ancestral states as node labels
-            p = p + geom_text(aes(label=end_state_1), hjust=node_label_hjust, size=node_label_size)
+            #p = p + geom_text(aes(label=end_state_1), hjust=node_label_hjust, size=node_label_size)
+            p = p + geom_text(aes(label=end_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
             # set the root's start state to NA
             attributes(t)$stats$start_state_1[n_node] = NA
@@ -200,7 +207,7 @@ plot_ancestral_states = function(tree_file,
             p = p %<+% shoulder_data
             
             # plot the states on the "shoulders"
-            p = p + geom_text(aes(label=start_state_1, x=x_anc, y=y), hjust=shoulder_label_hjust, size=shoulder_label_size, na.rm=TRUE)
+            p = p + geom_text(aes(label=start_state_1, x=x_anc, y=y), hjust="right", nudge_x=shoulder_label_nudge_x, size=shoulder_label_size, na.rm=TRUE)
             
             # show ancestral states as size / posteriors as color
             p = p + geom_nodepoint(aes(colour=end_state_1_pp, size=end_state_1), alpha=alpha)
