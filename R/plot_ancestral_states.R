@@ -153,7 +153,7 @@ plot_ancestral_states = function(tree_file,
                                  color_high="#009E73",
                                  ...) { 
 
-    if (!(summary_statistic %in% c("MAP", "mean", "MAPChromosome"))) {
+    if ( (summary_statistic %in% c("MAP", "mean", "MAPChromosome")) == FALSE ) {
         print("Invalid summary statistic.")
         return()
     }
@@ -171,7 +171,8 @@ plot_ancestral_states = function(tree_file,
     }
 
     # add tip labels
-    p = ggtree(t, layout=tree_layout) + geom_tiplab(size=tip_label_size, offset=tip_label_offset, parse=tip_label_italics)
+    p = ggtree(t, layout=tree_layout) 
+    p = p + geom_tiplab(size=tip_label_size, offset=tip_label_offset, parse=tip_label_italics)
        
 
     if (summary_statistic == "MAPChromosome") {
@@ -239,13 +240,36 @@ plot_ancestral_states = function(tree_file,
         }
 
     } else if (summary_statistic == "MAP") {
-        
-        print("summary_statistic=MAP is not yet implemented.")
-        return()
 
         if (include_start_states) {
+            print("Start states not yet implemented for MAP ancestral states.")
+            return()
     
         }
+        
+        if (!("anc_state_1" %in% colnames(attributes(t)$stats))) {
+            anc_data = data.frame(node=names(attributes(t)$stats$end_state_1), 
+                                  anc_state_1=as.numeric(levels(attributes(t)$stats$end_state_1))[attributes(t)$stats$end_state_1],
+                                  anc_state_1_pp=as.numeric(levels(attributes(t)$stats$end_state_1_pp))[attributes(t)$stats$end_state_1_pp])
+            p = p %<+% anc_data
+        }
+
+        # add ancestral states as node labels
+        p = p + geom_text(aes(label=anc_state_1), hjust=node_label_hjust, size=node_label_size)
+
+        # show ancestral states as size / posteriors as color
+        p = p + geom_nodepoint(aes(colour=anc_state_1_pp, size=anc_state_1), alpha=alpha)
+        
+        # show the tip values
+        p = p + geom_tippoint(aes(size=anc_state_1), color="grey", alpha=alpha)
+        
+        # set up the legend
+        min_low = 0.0
+        max_up = 1.0
+        p = p + scale_colour_gradient2(low=color_low, mid=color_mid, high=color_high, limits=c(min_low, max_up), midpoint=0.5)
+        p = p + guides(size = guide_legend("State"))
+        p = p + guides(colour = guide_legend("Posterior Probability", override.aes = list(size=4)))
+
 
     } else if (summary_statistic == "mean") {
     
