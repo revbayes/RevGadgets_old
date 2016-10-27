@@ -142,6 +142,7 @@ plot_ancestral_states = function(tree_file,
                                  tip_label_size=4, 
                                  tip_label_offset=3,
                                  tip_label_italics=FALSE,
+                                 tip_node_size=2,
                                  node_label_size=4, 
                                  node_label_nudge_x=0.1, 
                                  shoulder_label_size=3, 
@@ -151,6 +152,8 @@ plot_ancestral_states = function(tree_file,
                                  color_low="#D55E00",
                                  color_mid="#F0E442",
                                  color_high="#009E73",
+                                 show_state_legend=TRUE,
+                                 show_posterior_legend=TRUE,
                                  ...) { 
 
     if ( (summary_statistic %in% c("MAP", "mean", "MAPChromosome")) == FALSE ) {
@@ -185,7 +188,6 @@ plot_ancestral_states = function(tree_file,
             }
 
             # add ancestral states as node labels
-            #p = p + geom_text(aes(label=end_state_1), hjust=node_label_hjust, size=node_label_size)
             p = p + geom_text(aes(label=end_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
             # set the root's start state to NA
@@ -215,8 +217,16 @@ plot_ancestral_states = function(tree_file,
             min_low = 0.0
             max_up = 1.0
             p = p + scale_colour_gradient2(low=color_low, mid=color_mid, high=color_high, limits=c(min_low, max_up), midpoint=0.5)
-            p = p + guides(size = guide_legend("Chromosome Number"))
-            p = p + guides(colour = guide_legend("Posterior Probability", override.aes = list(size=8)))
+            if (show_state_legend) {
+                p = p + guides(size=guide_legend("Chromosome Number"))
+            } else {
+                p = p + guides(size=FALSE)
+            }
+            if (show_posterior_legend) {
+                p = p + guides(colour=guide_legend("Posterior Probability", override.aes = list(size=8)))
+            } else {
+                p = p + guides(colour=FALSE)
+            }
 
         } else {
     
@@ -228,15 +238,23 @@ plot_ancestral_states = function(tree_file,
             }
 
             # add end states as node labels
-            p = p + geom_text(aes(label=anc_state_1), hjust=node_label_hjust, size=node_label_size)
+            p = p + geom_text(aes(label=anc_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
             # show ancestral states as size / posteriors as color
             p = p + geom_nodepoint(aes(colour=end_state_1_pp, size=end_state_1), alpha=alpha)
             min_low = 0.0
             max_up = 1.0
             p = p + scale_colour_gradient2(low=color_low, mid=color_mid, high=color_high, limits=c(min_low, max_up), midpoint=0.5)
-            p = p + guides(size = guide_legend("Chromosome Number"))
-            p = p + guides(colour = guide_legend("Posterior Probability", override.aes = list(size=8)))
+            if (show_state_legend) {
+                p = p + guides(size=guide_legend("Chromosome Number"))
+            } else {
+                p = p + guides(size=FALSE)
+            }
+            if (show_posterior_legend) {
+                p = p + guides(colour=guide_legend("Posterior Probability", override.aes = list(size=8)))
+            } else {
+                p = p + guides(colour=FALSE)
+            }
         }
 
     } else if (summary_statistic == "MAP") {
@@ -253,23 +271,27 @@ plot_ancestral_states = function(tree_file,
                                   anc_state_1_pp=as.numeric(levels(attributes(t)$stats$end_state_1_pp))[attributes(t)$stats$end_state_1_pp])
             p = p %<+% anc_data
         }
-
+        
         # add ancestral states as node labels
-        p = p + geom_text(aes(label=anc_state_1), hjust=node_label_hjust, size=node_label_size)
+        p = p + geom_text(aes(label=anc_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
-        # show ancestral states as size / posteriors as color
-        p = p + geom_nodepoint(aes(colour=anc_state_1_pp, size=anc_state_1), alpha=alpha)
+        # show ancestral states as color / posteriors as size
+        p = p + geom_nodepoint(aes(colour=factor(anc_state_1), size=anc_state_1_pp), alpha=alpha)
         
         # show the tip values
-        p = p + geom_tippoint(aes(size=anc_state_1), color="grey", alpha=alpha)
+        p = p + geom_tippoint(aes(colour=factor(anc_state_1)), size=tip_node_size, alpha=alpha)
         
         # set up the legend
-        min_low = 0.0
-        max_up = 1.0
-        p = p + scale_colour_gradient2(low=color_low, mid=color_mid, high=color_high, limits=c(min_low, max_up), midpoint=0.5)
-        p = p + guides(size = guide_legend("State"))
-        p = p + guides(colour = guide_legend("Posterior Probability", override.aes = list(size=4)))
-
+        if (show_state_legend) {
+            p = p + guides(colour=guide_legend("State"))        
+        } else {
+            p = p + guides(colour=FALSE)
+        }
+        if (show_posterior_legend) {
+            p = p + guides(size=guide_legend("Posterior Probability"))
+        } else {
+            p = p + guides(size=FALSE)
+        }
 
     } else if (summary_statistic == "mean") {
     
@@ -279,7 +301,7 @@ plot_ancestral_states = function(tree_file,
         }
 
         # add ancestral states as node labels
-        p = p + geom_text(aes(label=round(mean, 2)), hjust=node_label_hjust, size=node_label_size)
+        p = p + geom_text(aes(label=round(mean, 2)), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
         # show the size of the 95% CI as color 
         lowers = as.numeric(levels(attributes(t)$stats$lower_0.95_CI))[attributes(t)$stats$lower_0.95_CI]
@@ -298,10 +320,17 @@ plot_ancestral_states = function(tree_file,
         p = p + geom_tippoint(aes(size=mean), color="grey", alpha=alpha)
 
         # set up the legend
-        legend_text = "Mean State"
-        p = p + guides(size = guide_legend(legend_text))
-        p = p + guides(colour = guide_legend("95% CI Width", override.aes=list(size=4)))
-        
+        if (show_state_legend) {
+            legend_text = "Mean State"
+            p = p + guides(size=guide_legend(legend_text))
+        } else {
+            p = p + guides(size=FALSE)
+        }
+        if (show_posterior_legend) {
+            p = p + guides(colour=guide_legend("95% CI Width", override.aes=list(size=4)))
+        } else {
+            p = p + guides(colour=FALSE)
+        }
     
     } 
     p = p + scale_size(range = node_size_range)
