@@ -333,7 +333,7 @@ plot_ancestral_states = function(tree_file,
         }
     
     } 
-    p = p + scale_size(range = node_size_range)
+    p = p + scale_radius(range = node_size_range)
     p = p + theme(legend.position="left")
 
     # set visible area
