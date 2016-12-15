@@ -154,9 +154,10 @@ plot_ancestral_states = function(tree_file,
                                  color_high="#009E73",
                                  show_state_legend=TRUE,
                                  show_posterior_legend=TRUE,
+                                 state_labels=NULL,
                                  ...) { 
 
-    if ( (summary_statistic %in% c("MAP", "mean", "MAPChromosome")) == FALSE ) {
+    if ( (summary_statistic %in% c("MAP", "mean", "MAPChromosome", "MAPRange")) == FALSE ) {
         print("Invalid summary statistic.")
         return()
     }
@@ -166,11 +167,29 @@ plot_ancestral_states = function(tree_file,
     tree = attributes(t)$phylo
     n_node = getNodeNum(tree)
 
+    #return(t)
+
     # remove underscores from tip labels
     attributes(t)$phylo$tip.label = gsub("_", " ", attributes(t)$phylo$tip.label)
     
     if (tip_label_italics) {
         attributes(t)$phylo$tip.label = paste("italic('", attributes(t)$phylo$tip.label, "')", sep="")
+    }
+
+    if (!is.null(state_labels)) {
+        if (include_start_states) {
+            x_end   = attributes(t)$stats$end_state_1
+            x_start = attributes(t)$stats$start_state_1
+            x_start = plyr:::mapvalues(x_start, from=levels(x_start), to=state_labels[as.numeric(levels(x_start))])
+            x_end   = plyr:::mapvalues(x_end,   from=levels(x_end),   to=state_labels[as.numeric(levels(x_end))])
+            attributes(t)$stats$start_state_1 = x_start
+            attributes(t)$stats$end_state_1 = x_end
+        }
+        else {
+            x_end   = attributes(t)$stats$end_state_1
+            x_end   = mapvalues(x_end, from=levels(x_end), to=state_labels[as.numeric(levels(x_end))])
+            attributes(t)$stats$end_state_1 = x_end
+        }
     }
 
     # add tip labels
@@ -227,9 +246,61 @@ plot_ancestral_states = function(tree_file,
             } else {
                 p = p + guides(colour=FALSE)
             }
+        }
+    } else if (summary_statistic == "MAPRange") {
+        
+        if (include_start_states) {
+            
+            if (!("start_state_1" %in% colnames(attributes(t)$stats))) {
+                print("Start states not found in input tree.")
+                return()
+            }
+
+            # add ancestral states as node labels
+            p = p + geom_text(aes(label=end_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
+
+            # set the root's start state to NA
+            attributes(t)$stats$start_state_1[n_node] = NA
+
+
+            # add clado daughter lineage start states on "shoulders" of tree
+            # get x, y coordinates of all nodes
+            x = getXcoord(tree)
+            y = getYcoord(tree)
+            x_anc = numeric(n_node)
+            node_index = numeric(n_node)
+            for (i in 1:n_node) {
+                if (getParent(tree, i) != 0) {
+                    # if not the root, get the x coordinate for the parent node
+                    x_anc[i] = x[getParent(tree, i)]
+                    node_index[i] = i
+                }
+            }
+            shoulder_data = data.frame(node=node_index, x_anc=x_anc, y=y)
+            p = p %<+% shoulder_data
+           
+            # plot the states on the "shoulders"
+            p = p + geom_text(aes(label=start_state_1, x=x_anc, y=y), hjust="right", nudge_x=shoulder_label_nudge_x, size=shoulder_label_size, na.rm=TRUE)
+            
+            # show ancestral states as color / posteriors as size
+            p = p + geom_nodepoint(aes(colour=factor(end_state_1), size=end_state_1_pp), alpha=alpha)
+
+            # show tip states as color
+            p = p + geom_tippoint(aes(colour=factor(end_state_1)), size=tip_node_size, alpha=alpha)
+
+            if (show_state_legend) {
+                p = p + guides(size=guide_legend("Posterior probability"))
+            } else {
+                p = p + guides(size=FALSE)
+            }
+            if (show_posterior_legend) {
+                p = p + guides(colour=guide_legend("Range", override.aes = list(size=8)))
+            } else {
+                p = p + guides(colour=FALSE)
+            }
 
         } else {
-    
+   
             if (!("anc_state_1" %in% colnames(attributes(t)$stats))) {
                 anc_data = data.frame(node=names(attributes(t)$stats$end_state_1), 
                                       anc_state_1=as.numeric(levels(attributes(t)$stats$end_state_1))[attributes(t)$stats$end_state_1],
@@ -264,10 +335,9 @@ plot_ancestral_states = function(tree_file,
             return()
     
         }
-        
         if (!("anc_state_1" %in% colnames(attributes(t)$stats))) {
             anc_data = data.frame(node=names(attributes(t)$stats$end_state_1), 
-                                  anc_state_1=as.numeric(levels(attributes(t)$stats$end_state_1))[attributes(t)$stats$end_state_1],
+                                  anc_state_1=levels(attributes(t)$stats$end_state_1)[attributes(t)$stats$end_state_1],
                                   anc_state_1_pp=as.numeric(levels(attributes(t)$stats$end_state_1_pp))[attributes(t)$stats$end_state_1_pp])
             p = p %<+% anc_data
         }
