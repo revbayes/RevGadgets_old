@@ -167,8 +167,6 @@ plot_ancestral_states = function(tree_file,
     tree = attributes(t)$phylo
     n_node = getNodeNum(tree)
 
-    #return(t)
-
     # remove underscores from tip labels
     attributes(t)$phylo$tip.label = gsub("_", " ", attributes(t)$phylo$tip.label)
     
