@@ -96,6 +96,7 @@ getParent <- function(tr, node) {
     return(res)
 }
 
+# set custom state labels
 assign_state_labels = function(t, state_labels, include_start_states, n_states=1)
 {
 
@@ -104,7 +105,6 @@ assign_state_labels = function(t, state_labels, include_start_states, n_states=1
         return(t)
     }
         
-
     # what is the ancestral state name tag?
     if (include_start_states) {
         state_pos_str_base = c("start_state_", "end_state_")
@@ -119,27 +119,23 @@ assign_state_labels = function(t, state_labels, include_start_states, n_states=1
     for (m in state_pos_str_to_update)
     {
         x_state = attributes(t)$stats[[m]]
-        #print(x_state)
-        #print(as.numeric(levels(x_state)))
         to_states = state_labels[as.numeric(levels(x_state))]
         if (any(is.na(to_states)))
         {
-            #na_idx = which(is.na(to_states))
-            #max_state = max(as.vector(to_states), na.rm=T)
-            #print(na_idx)
-            #print(max_state)
-            #to_states[na_idx] = max_state+1:length(na_idx)
-            #print(to_states)
             to_states = state_labels #[1:length(state_labels)]
         }
         
         x_state = plyr:::mapvalues(x_state, from=levels(x_state), to=to_states)
         x_state <- factor(x_state, levels=state_labels, ordered=T)
-        #print(x_state)
+        
         attributes(t)$stats[[m]] = x_state
     }
     return(t)
 }
+
+# Still being developed, but this will create a probability matrix
+# for all internal nodes and all sampled states. The matrix will
+# be appropriate for use with the pie/bar inset function in ggtree.
 
 build_state_probs = function(t, state_labels, include_start_states) {
 
@@ -158,26 +154,17 @@ build_state_probs = function(t, state_labels, include_start_states) {
     for (s in state_tags) {
         dat[[s]] = data.frame( matrix(0, nrow=n_node, ncol=n_states) )
         dat[[s]] = cbind(node=1:n_node, dat[[s]])
-        #colnames(dat[[s]]) = c("node", state_labels)
         
         for (i in 1:3)
         {
             m = paste(s,"_state_",i,sep="")
             pp_str = paste(m,"_pp",sep="")
             n_tmp = attributes(t)$stats$node
-            #x_tmp = as.numeric(as.vector(attributes(t)$stats[[m]]))
             x_tmp = as.vector(attributes(t)$stats[[m]])
             pp_tmp = as.vector(attributes(t)$stats[[pp_str]])
             
-            #print(m)
-            ##print(pp_str)
-            #print(attributes(t)$stats)
-            ##print(n_tmp)
-            #print(x_tmp)
-            #print(pp_tmp)
             for (j in 1:length(x_tmp))
             {
-                #cat(c(n_tmp[j],x_tmp[j],pp_tmp[j]),"\n",sep="\t")
                 if (!is.na(x_tmp[j])) {
                     k = which(x_tmp[j]==state_labels)
                     dat[[s]][n_tmp[j], k+1] = pp_tmp[j]
@@ -185,9 +172,6 @@ build_state_probs = function(t, state_labels, include_start_states) {
                 }
             }
         }
-        #print(head(dat[[s]]))
-        #print(apply(dat[[s]][2:ncol(dat_start)], 1, sum))
-    
     }
     
     
