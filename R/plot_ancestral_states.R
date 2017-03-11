@@ -118,16 +118,34 @@ assign_state_labels = function(t, state_labels, include_start_states, n_states=1
     # overwrite state labels
     for (m in state_pos_str_to_update)
     {
+        # get the states
         x_state = attributes(t)$stats[[m]]
-        to_states = state_labels[as.numeric(levels(x_state))]
-        if (any(is.na(to_states)))
-        {
-            to_states = state_labels #[1:length(state_labels)]
-        }
-        
-        x_state = plyr:::mapvalues(x_state, from=levels(x_state), to=to_states)
-        x_state <- factor(x_state, levels=state_labels, ordered=T)
-        
+        x_state = as.vector(x_state)
+        x_state = state_labels[ match(x_state, names(state_labels)) ]
+        attributes(t)$stats[[m]] = x_state
+    }
+    return(t)
+}
+
+# set prob factors
+set_pp_factor_range = function(t, include_start_states, n_states=1)
+{
+
+    # what is the ancestral state name tag?
+    if (include_start_states) {
+        state_pos_str_base = c("start_state_", "end_state_")
+    } else {
+        state_pos_str_base = c("anc_state_")
+    }
+    
+    # create list of ancestral state name tags
+    state_pos_str_to_update = c(sapply(1:n_states, function(x) { paste(state_pos_str_base,x,"_pp",sep="")}))
+    
+    # overwrite state labels
+    for (m in state_pos_str_to_update)
+    {
+        x_state = attributes(t)$stats[[m]]
+        levels(x_state) = c(0.51, 1.01, levels(x_state))
         attributes(t)$stats[[m]] = x_state
     }
     return(t)
@@ -224,11 +242,13 @@ plot_ancestral_states = function(tree_file,
                                  xlim_visible=c(0, 40), 
                                  ylim_visible=NULL,
                                  tip_label_size=4, 
-                                 tip_label_offset=3,
+                                 tip_label_offset=5,
                                  tip_label_italics=FALSE,
                                  tip_node_size=2,
                                  node_label_size=4, 
-                                 node_label_nudge_x=0.1, 
+                                 node_pp_label_size=0,
+                                 node_label_nudge_x=0.1,
+                                 node_pp_label_nudge_x=0.1,
                                  shoulder_label_size=3, 
                                  shoulder_label_nudge_x=-0.1, 
                                  alpha=0.5, 
@@ -241,6 +261,7 @@ plot_ancestral_states = function(tree_file,
                                  show_tree_scale=TRUE,
                                  state_labels=NULL,
                                  state_colors=NULL,
+                                 title="",
                                  ...) { 
 
     if ( (summary_statistic %in% c("MAP", "mean", "MAPChromosome", "MAPRange", "PieRange")) == FALSE ) {
@@ -250,10 +271,13 @@ plot_ancestral_states = function(tree_file,
 
     # read in tree
     t = read.beast(tree_file)
-    
+
     # add state labels
     t = assign_state_labels(t, state_labels, include_start_states)
-    
+
+    # add range for pp factors
+    t = set_pp_factor_range(t, include_start_states)
+
     # add state colors
     use_state_colors = !is.null(state_colors)
     if (!is.null(state_colors) && !is.null(state_labels))
@@ -275,7 +299,7 @@ plot_ancestral_states = function(tree_file,
     }
 
     # add tip labels
-    p = ggtree(t, layout=tree_layout) 
+    p = ggtree(t, layout=tree_layout, ladderize=TRUE)
     p = p + geom_tiplab(size=tip_label_size, offset=tip_label_offset, parse=tip_label_italics)
        
     if (summary_statistic == "MAPChromosome") {
@@ -455,12 +479,18 @@ plot_ancestral_states = function(tree_file,
                                   anc_state_1_pp=as.numeric(levels(attributes(t)$stats$end_state_1_pp))[attributes(t)$stats$end_state_1_pp])
             p = p %<+% anc_data
         }
-        
+
         # add ancestral states as node labels
         p = p + geom_text(aes(label=anc_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
         # show ancestral states as color / posteriors as size
         p = p + geom_nodepoint(aes(colour=factor(anc_state_1), size=anc_state_1_pp), alpha=alpha)
+
+        print(attributes(t)$stats$anc_state_1_pp)
+
+        if (node_label_size == 0) {
+            p = p + geom_text(aes(label=sprintf("%.02f", anc_state_1_pp)), hjust="left", nudge_x=node_label_nudge_x, size=node_pp_label_size)
+        }
         
         # show the tip values
         p = p + geom_tippoint(aes(colour=factor(anc_state_1)), size=tip_node_size, alpha=alpha)
@@ -530,7 +560,7 @@ plot_ancestral_states = function(tree_file,
     {
        #p = p + theme_tree2()
     }
-
+    p = p + ggtitle(title)
     # set visible area
     p = p + coord_cartesian(xlim = xlim_visible, ylim=ylim_visible, expand=TRUE)
     print(p)
