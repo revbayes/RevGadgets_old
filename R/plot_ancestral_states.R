@@ -145,7 +145,7 @@ set_pp_factor_range = function(t, include_start_states, n_states=1)
     for (m in state_pos_str_to_update)
     {
         x_state = attributes(t)$stats[[m]]
-        levels(x_state) = c(0.51, 1.01, levels(x_state))
+        #levels(x_state) = c(levels(x_state))
         attributes(t)$stats[[m]] = x_state
     }
     return(t)
@@ -486,25 +486,36 @@ plot_ancestral_states = function(tree_file,
         # show ancestral states as color / posteriors as size
         p = p + geom_nodepoint(aes(colour=factor(anc_state_1), size=anc_state_1_pp), alpha=alpha)
 
-        print(attributes(t)$stats$anc_state_1_pp)
+        pp = as.numeric( as.vector( attributes(t)$stats$anc_state_1_pp) )
+        #print(pp)
+        
+        if (!F) {
+            pp_offset_range = 2*(c(min(pp), max(pp)) - 0.5)
+            nd_offset_interval = node_size_range[2] - node_size_range[1]
+            nd_offset = node_size_range[1]
+            node_size_range = pp_offset_range * nd_offset_interval + nd_offset
+            #node_size_range[1] = node_size_range[1] * min(pp) / 0.5
+            #node_size_range[2] = node_size_range[2] * max(pp)
+        }
 
         if (node_label_size == 0) {
             p = p + geom_text(aes(label=sprintf("%.02f", anc_state_1_pp)), hjust="left", nudge_x=node_label_nudge_x, size=node_pp_label_size)
         }
+        #p = p = scale_fill_continuous(breaks=c(0.6, 0.7, 0.8, 0.9, 1.0))
         
         # show the tip values
         p = p + geom_tippoint(aes(colour=factor(anc_state_1)), size=tip_node_size, alpha=alpha)
         
         # set up the legend
         if (show_state_legend) {
-            p = p + guides(colour=guide_legend("State"))        
+            p = p + guides(colour=guide_legend("State"), order=1)        
         } else {
-            p = p + guides(colour=FALSE)
+            p = p + guides(colour=FALSE, order=2)
         }
         if (show_posterior_legend) {
-            p = p + guides(size=guide_legend("Posterior Probability"))
+            p = p + guides(size=guide_legend("Posterior Probability"), order=3)
         } else {
-            p = p + guides(size=FALSE)
+            p = p + guides(size=FALSE, order=4)
         }
 
     } else if (summary_statistic == "mean") {
