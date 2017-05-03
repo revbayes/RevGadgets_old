@@ -311,8 +311,6 @@ plot_ancestral_states = function(tree_file,
                 return()
             }
 
-            # add ancestral states as node labels
-            p = p + geom_text(aes(label=end_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
             # set the root's start state to NA
             attributes(t)$stats$start_state_1[n_node] = NA
@@ -335,23 +333,37 @@ plot_ancestral_states = function(tree_file,
             
             # plot the states on the "shoulders"
             p = p + geom_text(aes(label=start_state_1, x=x_anc, y=y), hjust="right", nudge_x=shoulder_label_nudge_x, size=shoulder_label_size, na.rm=TRUE)
-            
+        
+            # add ancestral states as node labels
+            p = p + geom_text(aes(label=end_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
+        
             # show ancestral states as size / posteriors as color
             p = p + geom_nodepoint(aes(colour=end_state_1_pp, size=end_state_1), alpha=alpha)
-            min_low = 0.0
-            max_up = 1.0
-            p = p + scale_colour_gradient2(low=color_low, mid=color_mid, high=color_high, limits=c(min_low, max_up), midpoint=0.5)
-            if (show_state_legend) {
-                p = p + guides(size=guide_legend("Chromosome Number"))
-            } else {
-                p = p + guides(size=FALSE)
-            }
-            if (show_posterior_legend) {
-                p = p + guides(colour=guide_legend("Posterior Probability", override.aes = list(size=8)))
-            } else {
-                p = p + guides(colour=FALSE)
-            }
+
+        } else {
+        
+            # add ancestral states as node labels
+            p = p + geom_text(aes(label=anc_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
+
+            # show ancestral states as size / posteriors as color
+            p = p + geom_nodepoint(aes(colour=anc_state_1_pp, size=anc_state_1), alpha=alpha)
+
         }
+
+        min_low = 0.0
+        max_up = 1.0
+        p = p + scale_colour_gradient2(low=color_low, mid=color_mid, high=color_high, limits=c(min_low, max_up), midpoint=0.5)
+        if (show_state_legend) {
+            p = p + guides(size=guide_legend("Chromosome Number"))
+        } else {
+            p = p + guides(size=FALSE)
+        }
+        if (show_posterior_legend) {
+            p = p + guides(colour=guide_legend("Posterior Probability", override.aes = list(size=8)))
+        } else {
+            p = p + guides(colour=FALSE)
+        }
+
     } else if (summary_statistic == "MAPRange") {
         if (!include_start_states) {
             warning("Ignoring that include_start_states is set to FALSE")
