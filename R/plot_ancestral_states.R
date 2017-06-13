@@ -245,6 +245,7 @@ plot_ancestral_states = function(tree_file,
                                  tip_label_offset=5,
                                  tip_label_italics=FALSE,
                                  tip_node_size=2,
+                                 tip_node_shape=15,
                                  node_label_size=4, 
                                  node_pp_label_size=0,
                                  node_label_nudge_x=0.1,
@@ -516,7 +517,7 @@ plot_ancestral_states = function(tree_file,
         #p = p = scale_fill_continuous(breaks=c(0.6, 0.7, 0.8, 0.9, 1.0))
         
         # show the tip values
-        p = p + geom_tippoint(aes(colour=factor(anc_state_1)), size=tip_node_size, alpha=alpha)
+        p = p + geom_tippoint(aes(colour=factor(anc_state_1)), size=tip_node_size, alpha=alpha, shape=tip_node_shape)
         
         # set up the legend
         if (show_state_legend) {
