@@ -29,6 +29,7 @@ rev.plot.div.rates = function(output,fig.types=c("speciation rate", "extinction 
     # Check that fig type is valid
     validFigTypes <- c("speciation rate","speciation shift times","speciation Bayes factors",
                        "extinction rate","extinction shift times","extinction Bayes factors",
+                       "fossilization rate","fossilization shift times","fossilization Bayes factors",
                        "net-diversification rate","relative-extinction rate",
                        "mass extinction times","mass extinction Bayes factors")
     invalidFigTypes <- fig.types[!fig.types %in% validFigTypes]
@@ -188,31 +189,46 @@ rev.plot.div.rates = function(output,fig.types=c("speciation rate", "extinction 
 #
 ################################################################################
 
-rev.process.div.rates = function(speciation_times_file="",speciation_rates_file="",extinction_times_file="",extinction_rates_file="",tree,burnin=0.25,numIntervals=100){
+rev.process.div.rates = function(speciation_times_file="",speciation_rates_file="",extinction_times_file="",extinction_rates_file="",fossilization_times_file="",fossilization_rates_file="",tree,burnin=0.25,numIntervals=100){
 
 
-  # Get the time of the tree and divide it into intervals
-  time <- max( branching.times(tree) )
-  intervals <- seq(0,time,length.out=numIntervals+1)
+    # Get the time of the tree and divide it into intervals
+    time <- max( branching.times(tree) )
+    intervals <- seq(0,time,length.out=numIntervals+1)
 
-  processSpeciationRates <- rev.read.mcmc.output.rates.through.time(speciation_times_file, speciation_rates_file, intervals, burnin)
-  processExtinctionRates <- rev.read.mcmc.output.rates.through.time(extinction_times_file, extinction_rates_file, intervals, burnin)
-
-
-  # Process the net-diversification and relative-extinction rates
-  processNetDiversificationRates <- as.mcmc(processSpeciationRates-processExtinctionRates)
-  processRelativeExtinctionRates <- as.mcmc(processExtinctionRates/processSpeciationRates)
+    processSpeciationRates <- rev.read.mcmc.output.rates.through.time(speciation_times_file, speciation_rates_file, intervals, burnin)
+    processExtinctionRates <- rev.read.mcmc.output.rates.through.time(extinction_times_file, extinction_rates_file, intervals, burnin)
 
 
+    # Process the net-diversification and relative-extinction rates
+    processNetDiversificationRates <- as.mcmc(processSpeciationRates-processExtinctionRates)
+    processRelativeExtinctionRates <- as.mcmc(processExtinctionRates/processSpeciationRates)
 
-  res <- list("speciation rate" = processSpeciationRates,
-              "extinction rate" = processExtinctionRates,
-              "net-diversification rate" = processNetDiversificationRates,
-              "relative-extinction rate" = processRelativeExtinctionRates,
-              "tree" = tree,
-              "intervals" = rev(intervals) )
+    if ( fossilization_times_file != "" && fossilization_rates_file != "" ) {
 
-  return(res)
+        processFossilizationRates <- rev.read.mcmc.output.rates.through.time(fossilization_times_file, fossilization_rates_file, intervals, burnin)
 
+        res <- list("speciation rate" = processSpeciationRates,
+                    "extinction rate" = processExtinctionRates,
+                    "extinction rate" = processFossilizationRates,
+                    "net-diversification rate" = processNetDiversificationRates,
+                    "relative-extinction rate" = processRelativeExtinctionRates,
+                    "tree" = tree,
+                    "intervals" = rev(intervals) )
+
+        return(res)
+    
+    } else {
+
+        res <- list("speciation rate" = processSpeciationRates,
+                    "extinction rate" = processExtinctionRates,
+                    "net-diversification rate" = processNetDiversificationRates,
+                    "relative-extinction rate" = processRelativeExtinctionRates,
+                    "tree" = tree,
+                    "intervals" = rev(intervals) )
+
+        return(res)
+
+    }
 }
 
