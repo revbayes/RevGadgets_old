@@ -47,6 +47,9 @@ rev.plot.div.rates = function(output,fig.types=c("speciation rate", "extinction 
                  "extinction rate"="#E41A1C",
                  "extinction shift times"="#E41A1C",
                  "extinction Bayes factors"="#E41A1C",
+                 "fossilization rate"="#ffa31a",
+                 "fossilization shift times"="#ffa31a",
+                 "fossilization Bayes factors"="#ffa31a",
                  "net-diversification rate"="#377EB8",
                  "relative-extinction rate"="#FF7F00",
                  "mass extinction times"="#4DAF4A",
@@ -210,7 +213,7 @@ rev.process.div.rates = function(speciation_times_file="",speciation_rates_file=
 
         res <- list("speciation rate" = processSpeciationRates,
                     "extinction rate" = processExtinctionRates,
-                    "extinction rate" = processFossilizationRates,
+                    "fossilization rate" = processFossilizationRates,
                     "net-diversification rate" = processNetDiversificationRates,
                     "relative-extinction rate" = processRelativeExtinctionRates,
                     "tree" = tree,
