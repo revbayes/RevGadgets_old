@@ -196,7 +196,7 @@ rev.process.div.rates = function(speciation_times_file="",speciation_rates_file=
 
 
     # Get the time of the tree and divide it into intervals
-    time <- max( branching.times(tree) )
+    time <- max(node.depth.edgelength(tree))
     intervals <- seq(0,time,length.out=numIntervals+1)
 
     processSpeciationRates <- rev.read.mcmc.output.rates.through.time(speciation_times_file, speciation_rates_file, intervals, burnin)
