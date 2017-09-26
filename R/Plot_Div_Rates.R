@@ -59,7 +59,7 @@ rev.plot.div.rates = function(output,fig.types=c("speciation rate", "extinction 
     }
 
     # Compute the axes
-    tree_age <- max(branching.times(output$tree))
+    tree_age <- max(node.depth.edgelength(tree))
     numIntervals <- length(output$intervals)-1
     plotAt <- 0:numIntervals
     intervalSize <- tree_age/numIntervals
