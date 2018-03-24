@@ -51,7 +51,7 @@ getXcoord <- function(tr) {
     edge <- tr$edge
     parent <- edge[,1]
     child <- edge[,2]
-    root <- getRoot(tr)
+    root <- ggtree:::getRoot(tr)
 
     len <- tr$edge.length
 
@@ -107,7 +107,7 @@ getYcoord <- function(tr, step=1) {
 
 # modified from https://github.com/GuangchuangYu/ggtree/blob/master/R/tree-utilities.R
 getParent <- function(tr, node) {
-    if ( node == getRoot(tr) )
+    if ( node == ggtree:::getRoot(tr) )
         return(0)
     edge <- tr[["edge"]]
     parent <- edge[,1]
@@ -145,7 +145,7 @@ assign_state_labels = function(t, state_labels, include_start_states, n_states=3
     for (m in state_pos_str_to_update)
     {
         # get the states
-        x_state = attributes(t)$stats[[m]]
+        x_state = attributes(t)$data[[m]]
         x_state = as.vector(x_state)
         x_state_valid = which( x_state != "NA" )
         x_state_invalid = which( x_state == "NA" )
@@ -156,7 +156,7 @@ assign_state_labels = function(t, state_labels, include_start_states, n_states=3
         x_state_tmp = unlist(sapply(x_state, function(z) { state_labels[ names(state_labels)==z ] }))
         x_state[x_state_valid] = x_state_tmp
         x_state[x_state_invalid] = NA
-        attributes(t)$stats[[m]] = x_state
+        attributes(t)$data[[m]] = x_state
     }
     
     return(t)
@@ -179,9 +179,9 @@ set_pp_factor_range = function(t, include_start_states, n_states=1)
     # overwrite state labels
     for (m in state_pos_str_to_update)
     {
-        x_state = attributes(t)$stats[[m]]
+        x_state = attributes(t)$data[[m]]
         #levels(x_state) = c(levels(x_state))
-        attributes(t)$stats[[m]] = x_state
+        attributes(t)$data[[m]] = x_state
     }
     return(t)
 }
@@ -212,9 +212,9 @@ build_state_probs = function(t, state_labels, include_start_states) {
         {
             m = paste(s,"_state_",i,sep="")
             pp_str = paste(m,"_pp",sep="")
-            n_tmp = as.numeric(as.vector(attributes(t)$stats$node)) # node index
-            x_tmp = as.vector(attributes(t)$stats[[m]])
-            pp_tmp = as.numeric(as.vector(attributes(t)$stats[[pp_str]]))
+            n_tmp = as.numeric(as.vector(attributes(t)$data$node)) # node index
+            x_tmp = as.vector(attributes(t)$data[[m]])
+            pp_tmp = as.numeric(as.vector(attributes(t)$data[[pp_str]]))
             
             for (j in 1:length(x_tmp))
             {
@@ -356,14 +356,14 @@ plot_ancestral_states = function(tree_file,
         
         if (include_start_states) {
             
-            if (!("start_state_1" %in% colnames(attributes(t)$stats))) {
+            if (!("start_state_1" %in% colnames(attributes(t)$data))) {
                 print("Start states not found in input tree.")
                 return()
             }
 
 
             # set the root's start state to NA
-            attributes(t)$stats$start_state_1[n_node] = NA
+            attributes(t)$data$start_state_1[n_node] = NA
 
             # add clado daughter lineage start states on "shoulders" of tree
             # get x, y coordinates of all nodes
@@ -418,7 +418,7 @@ plot_ancestral_states = function(tree_file,
         if (!include_start_states) {
             warning("Ignoring that include_start_states is set to FALSE")
         }
-        if (!("start_state_1" %in% colnames(attributes(t)$stats))) {
+        if (!("start_state_1" %in% colnames(attributes(t)$data))) {
             print("Start states not found in input tree.")
             return()
         }
@@ -427,7 +427,7 @@ plot_ancestral_states = function(tree_file,
         #p = p + geom_text(aes(label=end_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
         # set the root's start state to NA
-        attributes(t)$stats$start_state_1[n_node] = NA
+        attributes(t)$data$start_state_1[n_node] = NA
 
         # add clado daughter lineage start states on "shoulders" of tree
         # get x, y coordinates of all nodes
@@ -453,7 +453,7 @@ plot_ancestral_states = function(tree_file,
         # show tip states as color
         #print(shoulder_data)
         #print(x_anc)
-        #print(c(attributes(t)$stats$start_state_1,attributes(t)$stats$end_state_1))
+        #print(c(attributes(t)$data$start_state_1,attributes(t)$data$end_state_1))
        
         p = p + geom_tippoint(aes(colour=factor(end_state_1)), size=tip_node_size, alpha=alpha) 
         
@@ -481,10 +481,10 @@ plot_ancestral_states = function(tree_file,
             return()
     
         }
-        if (!("anc_state_1" %in% colnames(attributes(t)$stats))) {
-            anc_data = data.frame(node=names(attributes(t)$stats$end_state_1), 
-                                  anc_state_1=levels(attributes(t)$stats$end_state_1)[attributes(t)$stats$end_state_1],
-                                  anc_state_1_pp=as.numeric(levels(attributes(t)$stats$end_state_1_pp))[attributes(t)$stats$end_state_1_pp])
+        if (!("anc_state_1" %in% colnames(attributes(t)$data))) {
+            anc_data = data.frame(node=names(attributes(t)$data$end_state_1), 
+                                  anc_state_1=levels(attributes(t)$data$end_state_1)[attributes(t)$data$end_state_1],
+                                  anc_state_1_pp=as.numeric(levels(attributes(t)$data$end_state_1_pp))[attributes(t)$data$end_state_1_pp])
             p = p %<+% anc_data
         }
 
@@ -494,7 +494,7 @@ plot_ancestral_states = function(tree_file,
         # show ancestral states as color / posteriors as size
         p = p + geom_nodepoint(aes(colour=factor(anc_state_1), size=anc_state_1_pp), alpha=alpha)
 
-        pp = as.numeric( as.vector( attributes(t)$stats$anc_state_1_pp) )
+        pp = as.numeric( as.vector( attributes(t)$data$anc_state_1_pp) )
         #print(pp)
         
         if (!F) {
@@ -537,10 +537,10 @@ plot_ancestral_states = function(tree_file,
         p = p + geom_text(aes(label=round(mean, 2)), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
         # show the size of the 95% CI as color 
-        lowers = as.numeric(levels(attributes(t)$stats$lower_0.95_CI))[attributes(t)$stats$lower_0.95_CI]
-        uppers = as.numeric(levels(attributes(t)$stats$upper_0.95_CI))[attributes(t)$stats$upper_0.95_CI]
+        lowers = as.numeric(levels(attributes(t)$data$lower_0.95_CI))[attributes(t)$data$lower_0.95_CI]
+        uppers = as.numeric(levels(attributes(t)$data$upper_0.95_CI))[attributes(t)$data$upper_0.95_CI]
         diffs = uppers - lowers
-        diffs_df = data.frame(node=names(attributes(t)$stats$lower_0.95_CI), diff_vals=diffs)
+        diffs_df = data.frame(node=names(attributes(t)$data$lower_0.95_CI), diff_vals=diffs)
         p = p %<+% diffs_df 
 
         min_low = min(diffs, na.rm=TRUE)
@@ -572,10 +572,10 @@ plot_ancestral_states = function(tree_file,
         }
         
         
-        if (!("anc_state_1" %in% colnames(attributes(t)$stats))) {
-            anc_data = data.frame(node=names(attributes(t)$stats$end_state_1), 
-                                  anc_state_1=levels(attributes(t)$stats$end_state_1)[attributes(t)$stats$end_state_1],
-                                  anc_state_1_pp=as.numeric(levels(attributes(t)$stats$end_state_1_pp))[attributes(t)$stats$end_state_1_pp])
+        if (!("anc_state_1" %in% colnames(attributes(t)$data))) {
+            anc_data = data.frame(node=names(attributes(t)$data$end_state_1), 
+                                  anc_state_1=levels(attributes(t)$data$end_state_1)[attributes(t)$data$end_state_1],
+                                  anc_state_1_pp=as.numeric(levels(attributes(t)$data$end_state_1_pp))[attributes(t)$data$end_state_1_pp])
             #p = p %<+% anc_data
         }
         
@@ -621,13 +621,13 @@ plot_ancestral_states = function(tree_file,
 
     } else if (summary_statistic == "PieRange") {
      
-        if (!("start_state_1" %in% colnames(attributes(t)$stats))) {
+        if (!("start_state_1" %in% colnames(attributes(t)$data))) {
             print("Start states not found in input tree.")
             return()
         }
 
         # set the root's start state to NA
-        #attributes(t)$stats$start_state_1[n_node] = NA
+        #attributes(t)$data$start_state_1[n_node] = NA
         
         # print tips
         p = p + geom_tippoint(aes(colour=factor(end_state_1)), size=tip_node_size, alpha=alpha) 
