@@ -55,7 +55,7 @@ getXcoord <- function(tr) {
 
     len <- tr$edge.length
 
-    N <- getNodeNum(tr)
+    N <- ggtree:::getNodeNum(tr)
     x <- numeric(N)
     x <- getXcoord2(x, root, parent, child, len)
     return(x)
@@ -64,7 +64,7 @@ getXcoord <- function(tr) {
 # modified from https://github.com/GuangchuangYu/ggtree/blob/master/R/tree-utilities.R
 getYcoord <- function(tr, step=1) {
     Ntip <- length(tr[["tip.label"]])
-    N <- getNodeNum(tr)
+    N <- ggtree:::getNodeNum(tr)
 
     edge <- tr[["edge"]]
     parent <- edge[,1]
@@ -339,7 +339,7 @@ plot_ancestral_states = function(tree_file,
     }
     
     tree = attributes(t)$phylo
-    n_node = getNodeNum(tree)
+    n_node = ggtree:::getNodeNum(tree)
 
     # remove underscores from tip labels
     attributes(t)$phylo$tip.label = gsub("_", " ", attributes(t)$phylo$tip.label)
