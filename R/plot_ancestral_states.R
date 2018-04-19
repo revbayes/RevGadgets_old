@@ -388,7 +388,7 @@ plot_ancestral_states = function(tree_file,
             p = p + geom_text(aes(label=end_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
         
             # show ancestral states as size / posteriors as color
-            p = p + geom_nodepoint(aes(colour=end_state_1_pp, size=end_state_1), alpha=alpha)
+            p = p + geom_nodepoint(aes(colour=as.numeric(end_state_1_pp), size=as.numeric(end_state_1)), alpha=alpha)
 
         } else {
         
@@ -396,7 +396,7 @@ plot_ancestral_states = function(tree_file,
             p = p + geom_text(aes(label=anc_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
             # show ancestral states as size / posteriors as color
-            p = p + geom_nodepoint(aes(colour=anc_state_1_pp, size=anc_state_1), alpha=alpha)
+            p = p + geom_nodepoint(aes(colour=as.numeric(anc_state_1_pp), size=as.numeric(anc_state_1)), alpha=alpha)
 
         }
 
@@ -708,9 +708,9 @@ plot_ancestral_states = function(tree_file,
     # set visible area
     p = p + coord_cartesian(xlim = xlim_visible, ylim=ylim_visible, expand=TRUE)
     
-    if (!(summary_statistic %in% c("PieState", "PieRange"))) {
-        print(p)
-    }
+#    if (!(summary_statistic %in% c("PieState", "PieRange"))) {
+#        print(p)
+#    }
     
     return(p)
 }
