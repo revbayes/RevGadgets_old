@@ -492,7 +492,7 @@ plot_ancestral_states = function(tree_file,
         p = p + geom_text(aes(label=anc_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
         # show ancestral states as color / posteriors as size
-        p = p + geom_nodepoint(aes(colour=factor(anc_state_1), size=anc_state_1_pp), alpha=alpha)
+        p = p + geom_nodepoint(aes(colour=factor(anc_state_1), size=as.numeric(anc_state_1_pp)), alpha=alpha)
 
         pp = as.numeric( as.vector( attributes(t)$data$anc_state_1_pp) )
         #print(pp)
@@ -507,7 +507,7 @@ plot_ancestral_states = function(tree_file,
         }
 
         if (node_label_size == 0) {
-            p = p + geom_text(aes(label=sprintf("%.02f", anc_state_1_pp)), hjust="left", nudge_x=node_label_nudge_x, size=node_pp_label_size)
+            p = p + geom_text(aes(label=sprintf("%.02f", as.numeric(anc_state_1_pp))), hjust="left", nudge_x=node_label_nudge_x, size=node_pp_label_size)
         }
         #p = p = scale_fill_continuous(breaks=c(0.6, 0.7, 0.8, 0.9, 1.0))
         
