@@ -447,8 +447,8 @@ plot_ancestral_states = function(tree_file,
        
         # plot the states on the "shoulders"
         p = p + geom_text(aes(label=start_state_1, x=x_anc, y=y), hjust="right", nudge_x=shoulder_label_nudge_x, size=shoulder_label_size, na.rm=TRUE)
-        p = p + geom_nodepoint(aes(colour=factor(start_state_1), x=x_anc, y=y, size=end_state_1_pp),na.rm=TRUE, alpha=alpha)
-        p = p + geom_tippoint(aes(colour=factor(start_state_1), x=x_anc, y=y, size=end_state_1_pp),na.rm=TRUE, alpha=alpha)
+        p = p + geom_nodepoint(aes(colour=factor(start_state_1), x=x_anc, y=y, size=as.numeric(end_state_1_pp)),na.rm=TRUE, alpha=alpha)
+        p = p + geom_tippoint(aes(colour=factor(start_state_1), x=x_anc, y=y, size=as.numeric(end_state_1_pp)),na.rm=TRUE, alpha=alpha)
         
         # show tip states as color
         #print(shoulder_data)
@@ -458,7 +458,7 @@ plot_ancestral_states = function(tree_file,
         p = p + geom_tippoint(aes(colour=factor(end_state_1)), size=tip_node_size, alpha=alpha) 
         
         # show ancestral states as color / posteriors as size
-        p = p + geom_nodepoint(aes(colour=factor(end_state_1), size=end_state_1_pp), alpha=alpha)
+        p = p + geom_nodepoint(aes(colour=factor(end_state_1), size=as.numeric(end_state_1_pp)), alpha=alpha)
 
         if (show_state_legend) {
             p = p + guides(colour=guide_legend("Range", override.aes = list(size=8), order=1))
