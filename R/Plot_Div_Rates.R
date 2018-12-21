@@ -100,6 +100,20 @@ rev.plot.div.rates = function(output,fig.types=c("speciation rate", "extinction 
             axis(4,at=2 * log(output$criticalBayesFactors),las=1,tick=FALSE,line=-0.5)
             axis(1,at=labelsAt,labels=labels)
 
+        } else if ( grepl("shift prob",type) ) {
+
+            thisOutput <- output[[type]]
+            ylim <- range(c(thisOutput,0,1),finite=TRUE)
+
+            if(plot.tree){
+                plot(output$tree,show.tip.label=FALSE,edge.col=rgb(0,0,0,0.10),x.lim=c(0,tree_age))
+                par(new=TRUE)
+            }
+            plot(x=plotAt[-1]-diff(plotAt[1:2])/2,y=thisOutput,type="p",xaxt=xaxt,col=col[type],ylab="Posterior Probability",main=type,xlab=xlab,ylim=ylim,xlim=range(plotAt),pch=pch,...)
+#            abline(h=2 * log(output$criticalBayesFactors),lty=2,...)
+#            axis(4,at=2 * log(output$criticalBayesFactors),las=1,tick=FALSE,line=-0.5)
+#            axis(1,at=labelsAt,labels=labels)
+
         } else {
 
             thisOutput <- output[[type]]
@@ -206,6 +220,11 @@ rev.process.div.rates = function(speciation_times_file="",speciation_rates_file=
     # Process the net-diversification and relative-extinction rates
     processNetDiversificationRates <- as.mcmc(processSpeciationRates-processExtinctionRates)
     processRelativeExtinctionRates <- as.mcmc(processExtinctionRates/processSpeciationRates)
+    
+    processSpeciationRatesShiftProb <- c()
+    for ( i in 2:numIntervals ) {
+        processSpeciationRatesShiftProb[i] <- mean(processSpeciationRates[,i] > processSpeciationRates[,i-1])
+    }
 
     if ( fossilization_times_file != "" && fossilization_rates_file != "" ) {
 
@@ -227,6 +246,7 @@ rev.process.div.rates = function(speciation_times_file="",speciation_rates_file=
                     "extinction rate" = processExtinctionRates,
                     "net-diversification rate" = processNetDiversificationRates,
                     "relative-extinction rate" = processRelativeExtinctionRates,
+                    "speciation rate shift prob" = processSpeciationRatesShiftProb,
                     "tree" = tree,
                     "intervals" = rev(intervals) )
 

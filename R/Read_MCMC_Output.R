@@ -31,7 +31,7 @@ rev.read.mcmc.output.rates.through.time = function(times_file_name, rates_file_n
   }
   
   cols <- strsplit(readLines(times_file_name)[lines_to_skip+1],"\t")[[1]]
-  col_headers <- c("Iteration","Posterior","Likelihood","Prior")
+  col_headers <- c("Iteration","Replicate_ID","Posterior","Likelihood","Prior")
   cols_to_skip <- sum(col_headers %in% cols)
   
   rate_change_times   <- strsplit(readLines(times_file_name)[-(1:(lines_to_skip+1))],"\t")
