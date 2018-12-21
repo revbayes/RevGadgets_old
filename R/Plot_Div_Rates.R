@@ -15,15 +15,17 @@
 # @param    xaxt              character     The type of x-axis to plot. By default, no x-axis is plotted (recommended).
 # @param    yaxt              character     The type of y-axis to plot.
 # @param    pch               integer       The type of points to draw (if points are drawn).
+# @param    use.geoscale      boolean       Add geological timescale (only works if offset = 0).
+# @param    offset            numeric       Value to offset the x-axis by.
 # @param    ...                             Parameters delegated to various plotting functions.
 #
 #
 ################################################################################
 
 rev.plot.div.rates = function(output,fig.types=c("speciation rate", "extinction rate", "net-diversification rate","relative-extinction rate"),
-                            xlab="million years ago",col=NULL,col.alpha=50,
-                            xaxt="n",yaxt="s",pch=19,plot.tree=FALSE, use.geoscale=TRUE, use.smoothing=!TRUE,
-                            predictor.ages=c(),predictor.var=c(),
+                            xlab="million years ago", col=NULL, col.alpha=50, offset = 0,
+                            xaxt="n",yaxt="s", pch=19, plot.tree=FALSE, use.geoscale=TRUE, use.smoothing=!TRUE,
+                            predictor.ages=c(), predictor.var=c(),
                             ...){
 
     # Check that fig type is valid
@@ -39,6 +41,10 @@ rev.plot.div.rates = function(output,fig.types=c("speciation rate", "extinction 
              "\nValid options are: ",paste(validFigTypes,collapse=", "),".")
     }
 
+    # Check tree arguments
+    if(plot.tree & is.null(output$tree))
+      stop("You must provide a tree if plot.tree = TRUE")
+    
     # Make color vector
     if ( is.null(col) ) {
         col <- c("speciation rate"="#984EA3",
@@ -59,12 +65,17 @@ rev.plot.div.rates = function(output,fig.types=c("speciation rate", "extinction 
     }
 
     # Compute the axes
-    tree_age <- max(node.depth.edgelength(tree))
+    if(!is.null(output$tree)){
+      tree_age <- max(node.depth.edgelength(output$tree))
+    }
+    else {
+      tree_age <- max(output$intervals)
+    }
     numIntervals <- length(output$intervals)-1
     plotAt <- 0:numIntervals
     intervalSize <- tree_age/numIntervals
-    labels <- pretty(c(0,tree_age))
-    labelsAt <- numIntervals - (labels / intervalSize)
+    labels <- pretty(c(0,tree_age)) + offset
+    labelsAt <- numIntervals - ( pretty(c(0,tree_age)) / intervalSize)
     ages <- seq(0,tree_age,length.out=numIntervals+1)
 
     for( type in fig.types ) {
@@ -137,6 +148,7 @@ rev.plot.div.rates = function(output,fig.types=c("speciation rate", "extinction 
                 par(new=TRUE)
             }
 
+            #### plot
             if ( use.geoscale == TRUE ) {
                 if ( use.smoothing == TRUE ) {
                     y_unsmoothed <- c(meanThisOutput[1],meanThisOutput)
@@ -196,7 +208,8 @@ rev.plot.div.rates = function(output,fig.types=c("speciation rate", "extinction 
 # @since 2016-08-31, version 1.0.0
 #
 # @param    dir                         character      The directory from which the CoMET output will be read.
-# @param    tree                        phylo          The tree analyzed with CoMET in phylo format. By default, looks for a tree in the target directory.
+# @param    tree                        phylo          The tree analyzed with CoMET in phylo format. By default this = NULL, otherwise the function looks for the specified tree in the target directory.
+# @param    maxAge                      numeric        The maximum interval age.
 # @param    numExpectedRateChanges      numeric        The number of expected diversification-rate changes.
 # @param    numExpectedMassExtinctions  numeric        The number of expected mass-extinction events.
 # @param    burnin                      numeric        The fraction of the posterior samples to be discarded as burnin.
@@ -206,16 +219,20 @@ rev.plot.div.rates = function(output,fig.types=c("speciation rate", "extinction 
 #
 ################################################################################
 
-rev.process.div.rates = function(speciation_times_file="",speciation_rates_file="",extinction_times_file="",extinction_rates_file="",fossilization_times_file="",fossilization_rates_file="",tree,burnin=0.25,numIntervals=100){
+rev.process.div.rates = function(speciation_times_file="",speciation_rates_file="",extinction_times_file="",extinction_rates_file="",fossilization_times_file="",fossilization_rates_file="",
+                                 tree = NULL,maxAge=NULL,burnin=0.25,numIntervals=100){
 
 
     # Get the time of the tree and divide it into intervals
-    time <- max(node.depth.edgelength(tree))
-    intervals <- seq(0,time,length.out=numIntervals+1)
+    if(!is.null(tree)){
+      time <- max(node.depth.edgelength(tree))
+      intervals <- seq(0,time,length.out=numIntervals+1)
+    } else {
+        intervals <- seq(0,maxAge,length.out=numIntervals+1)
+    }
 
     processSpeciationRates <- rev.read.mcmc.output.rates.through.time(speciation_times_file, speciation_rates_file, intervals, burnin)
     processExtinctionRates <- rev.read.mcmc.output.rates.through.time(extinction_times_file, extinction_rates_file, intervals, burnin)
-
 
     # Process the net-diversification and relative-extinction rates
     processNetDiversificationRates <- as.mcmc(processSpeciationRates-processExtinctionRates)
