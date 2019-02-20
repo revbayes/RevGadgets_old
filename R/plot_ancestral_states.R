@@ -4,9 +4,10 @@ require(colorspace)
 inset.revgadgets = function (tree_view, insets, width = 0.1, height = 0.1, hjust = 0, 
     vjust = 0, x = "node", pos = 0.5) 
 {
-    require(magrittr)
     df <- tree_view$data[as.numeric(names(insets)), ]
-    x <- match.arg(x, c("node", "branch", "edge","parent_shoulder"))
+    
+    # position subviews based on tree part
+    x <- match.arg(x, c("node", "branch", "edge", "parent_shoulder"))
     if (x == "node") {
         xx <- df$x
     }
@@ -23,15 +24,11 @@ inset.revgadgets = function (tree_view, insets, width = 0.1, height = 0.1, hjust
     if (length(width)==1) width = rep(width, length(insets))
     if (length(height)==1) height = rep(height, length(insets))
 
-    for (i in seq_along(insets)) {
-        #tree_view %<>% ggimage:::geom_subview(insets[[i]], x = xx[i], y = yy[i], 
-        #    width = width[i], height = height[i])
-        #ggimage::geom_subview()
-        #tree_view %<>% subview(insets[[i]], x = xx[i], y = yy[i], 
-        #    width = width[i], height = height[i])
-        tree_view = subview( tree_view, insets[[i]], x = xx[i], y = yy[i], 
-            width = width[i], height = height[i])
-    }
+    # add subviews
+    tree_view = tree_view + ggimage:::geom_subview(subview = insets, width = width, 
+        height = height, x = xx, y = yy)
+
+    # return treeview with subviews
     return(tree_view)
 }
 
@@ -60,11 +57,11 @@ getXcoord <- function(tr) {
     edge <- tr$edge
     parent <- edge[,1]
     child <- edge[,2]
-    root <- getRoot(tr)
+    root <- ggtree:::getRoot(tr)
 
     len <- tr$edge.length
 
-    N <- treeio:::getNodeNum(tr)
+    N <- ggtree:::getNodeNum(tr)
     x <- numeric(N)
     x <- getXcoord2(x, root, parent, child, len)
     return(x)
@@ -73,7 +70,7 @@ getXcoord <- function(tr) {
 # modified from https://github.com/GuangchuangYu/ggtree/blob/master/R/tree-utilities.R
 getYcoord <- function(tr, step=1) {
     Ntip <- length(tr[["tip.label"]])
-    N <- treeio:::getNodeNum(tr)
+    N <- ggtree:::getNodeNum(tr)
 
     edge <- tr[["edge"]]
     parent <- edge[,1]
@@ -116,7 +113,7 @@ getYcoord <- function(tr, step=1) {
 
 # modified from https://github.com/GuangchuangYu/ggtree/blob/master/R/tree-utilities.R
 getParent <- function(tr, node) {
-    if ( node == getRoot(tr) )
+    if ( node == ggtree:::getRoot(tr) )
         return(0)
     edge <- tr[["edge"]]
     parent <- edge[,1]
@@ -154,14 +151,14 @@ assign_state_labels = function(t, state_labels, include_start_states, n_states=3
     for (m in state_pos_str_to_update)
     {
         # get the states
-        x_state = attributes(t)$stats[[m]]
+        x_state = attributes(t)$data[[m]]
         x_state = as.vector(x_state)
         x_state_valid = which( x_state != "NA" )
         x_state_invalid = which( x_state == "NA" )
         x_state_tmp = unlist(sapply(x_state, function(z) { state_labels[ names(state_labels)==z ] }))
         x_state[x_state_valid] = x_state_tmp
         x_state[x_state_invalid] = NA
-        attributes(t)$stats[[m]] = x_state
+        attributes(t)$data[[m]] = x_state
     }
     
     return(t)
@@ -184,9 +181,9 @@ set_pp_factor_range = function(t, include_start_states, n_states=1)
     # overwrite state labels
     for (m in state_pos_str_to_update)
     {
-        x_state = attributes(t)$stats[[m]]
+        x_state = attributes(t)$data[[m]]
         #levels(x_state) = c(levels(x_state))
-        attributes(t)$stats[[m]] = x_state
+        attributes(t)$data[[m]] = x_state
     }
     return(t)
 }
@@ -217,9 +214,9 @@ build_state_probs = function(t, state_labels, include_start_states, p_threshold 
         {
             m = paste(s,"_state_",i,sep="")
             pp_str = paste(m,"_pp",sep="")
-            n_tmp = as.numeric(as.vector(attributes(t)$stats$node)) # node index
-            x_tmp = as.vector(attributes(t)$stats[[m]])
-            pp_tmp = as.numeric(as.vector(attributes(t)$stats[[pp_str]]))
+            n_tmp = as.numeric(as.vector(attributes(t)$data$node)) # node index
+            x_tmp = as.vector(attributes(t)$data[[m]])
+            pp_tmp = as.numeric(as.vector(attributes(t)$data[[pp_str]]))
             
             for (j in 1:length(x_tmp))
             {
@@ -328,8 +325,8 @@ plot_ancestral_states = function(tree_file,
                                  node_pp_label_nudge_x=0.1,
                                  shoulder_label_size=3, 
                                  shoulder_label_nudge_x=-0.1, 
-                                 node_pie_diameter=0.10,
-                                 tip_pie_diameter=0.08,
+                                 node_pie_diameter=1.10,
+                                 tip_pie_diameter=1.08,
                                  pie_nudge_x=0.0,
                                  pie_nudge_y=0.0,
                                  alpha=0.5, 
@@ -370,7 +367,7 @@ plot_ancestral_states = function(tree_file,
     }
     
     tree = attributes(t)$phylo
-    n_node = treeio:::getNodeNum(tree)
+    n_node = ggtree:::getNodeNum(tree)
 
     # remove underscores from tip labels
     attributes(t)$phylo$tip.label = gsub("_", " ", attributes(t)$phylo$tip.label)
@@ -378,8 +375,6 @@ plot_ancestral_states = function(tree_file,
     if (tip_label_italics) {
         attributes(t)$phylo$tip.label = paste("italic('", attributes(t)$phylo$tip.label, "')", sep="")
     }
-
-    print(t)
     
     # add tip labels
     p = ggtree(t, layout=tree_layout, ladderize=TRUE)
@@ -389,14 +384,14 @@ plot_ancestral_states = function(tree_file,
         
         if (include_start_states) {
             
-            if (!("start_state_1" %in% colnames(attributes(t)$stats))) {
+            if (!("start_state_1" %in% colnames(attributes(t)$data))) {
                 print("Start states not found in input tree.")
                 return()
             }
 
 
             # set the root's start state to NA
-            attributes(t)$stats$start_state_1[n_node] = NA
+            attributes(t)$data$start_state_1[n_node] = NA
 
             # add clado daughter lineage start states on "shoulders" of tree
             # get x, y coordinates of all nodes
@@ -421,7 +416,7 @@ plot_ancestral_states = function(tree_file,
             p = p + geom_text(aes(label=end_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
         
             # show ancestral states as size / posteriors as color
-            p = p + geom_nodepoint(aes(colour=end_state_1_pp, size=end_state_1), alpha=alpha)
+            p = p + geom_nodepoint(aes(colour=as.numeric(end_state_1_pp), size=as.numeric(end_state_1)), alpha=alpha)
 
         } else {
         
@@ -429,7 +424,7 @@ plot_ancestral_states = function(tree_file,
             p = p + geom_text(aes(label=anc_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
             # show ancestral states as size / posteriors as color
-            p = p + geom_nodepoint(aes(colour=anc_state_1_pp, size=anc_state_1), alpha=alpha)
+            p = p + geom_nodepoint(aes(colour=as.numeric(anc_state_1_pp), size=as.numeric(anc_state_1)), alpha=alpha)
 
         }
 
@@ -451,7 +446,7 @@ plot_ancestral_states = function(tree_file,
         if (!include_start_states) {
             warning("Ignoring that include_start_states is set to FALSE")
         }
-        if (!("start_state_1" %in% colnames(attributes(t)$stats))) {
+        if (!("start_state_1" %in% colnames(attributes(t)$data))) {
             print("Start states not found in input tree.")
             return()
         }
@@ -460,7 +455,7 @@ plot_ancestral_states = function(tree_file,
         #p = p + geom_text(aes(label=end_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
         # set the root's start state to NA
-        attributes(t)$stats$start_state_1[n_node] = NA
+        attributes(t)$data$start_state_1[n_node] = NA
 
         # add clado daughter lineage start states on "shoulders" of tree
         # get x, y coordinates of all nodes
@@ -480,18 +475,18 @@ plot_ancestral_states = function(tree_file,
        
         # plot the states on the "shoulders"
         p = p + geom_text(aes(label=start_state_1, x=x_anc, y=y), hjust="right", nudge_x=shoulder_label_nudge_x, size=shoulder_label_size, na.rm=TRUE)
-        p = p + geom_nodepoint(aes(colour=factor(start_state_1), x=x_anc, y=y, size=end_state_1_pp),na.rm=TRUE, alpha=alpha)
-        p = p + geom_tippoint(aes(colour=factor(start_state_1), x=x_anc, y=y, size=end_state_1_pp),na.rm=TRUE, alpha=alpha)
+        p = p + geom_nodepoint(aes(colour=factor(start_state_1), x=x_anc, y=y, size=as.numeric(end_state_1_pp)),na.rm=TRUE, alpha=alpha)
+        p = p + geom_tippoint(aes(colour=factor(start_state_1), x=x_anc, y=y, size=as.numeric(end_state_1_pp)),na.rm=TRUE, alpha=alpha)
         
         # show tip states as color
         #print(shoulder_data)
         #print(x_anc)
-        #print(c(attributes(t)$stats$start_state_1,attributes(t)$stats$end_state_1))
+        #print(c(attributes(t)$data$start_state_1,attributes(t)$data$end_state_1))
        
         p = p + geom_tippoint(aes(colour=factor(end_state_1)), size=tip_node_size, alpha=alpha) 
         
         # show ancestral states as color / posteriors as size
-        p = p + geom_nodepoint(aes(colour=factor(end_state_1), size=end_state_1_pp), alpha=alpha)
+        p = p + geom_nodepoint(aes(colour=factor(end_state_1), size=as.numeric(end_state_1_pp)), alpha=alpha)
 
         if (show_state_legend) {
             p = p + guides(colour=guide_legend("Range", override.aes = list(size=8), order=1))
@@ -514,10 +509,10 @@ plot_ancestral_states = function(tree_file,
             return()
     
         }
-        if (!("anc_state_1" %in% colnames(attributes(t)$stats))) {
-            anc_data = data.frame(node=names(attributes(t)$stats$end_state_1), 
-                                  anc_state_1=levels(attributes(t)$stats$end_state_1)[attributes(t)$stats$end_state_1],
-                                  anc_state_1_pp=as.numeric(levels(attributes(t)$stats$end_state_1_pp))[attributes(t)$stats$end_state_1_pp])
+        if (!("anc_state_1" %in% colnames(attributes(t)$data))) {
+            anc_data = data.frame(node=names(attributes(t)$data$end_state_1), 
+                                  anc_state_1=levels(attributes(t)$data$end_state_1)[attributes(t)$data$end_state_1],
+                                  anc_state_1_pp=as.numeric(levels(attributes(t)$data$end_state_1_pp))[attributes(t)$data$end_state_1_pp])
             p = p %<+% anc_data
         }
 
@@ -525,9 +520,9 @@ plot_ancestral_states = function(tree_file,
         p = p + geom_text(aes(label=anc_state_1), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
         # show ancestral states as color / posteriors as size
-        p = p + geom_nodepoint(aes(colour=factor(anc_state_1), size=anc_state_1_pp), alpha=alpha)
+        p = p + geom_nodepoint(aes(colour=factor(anc_state_1), size=as.numeric(anc_state_1_pp)), alpha=alpha)
 
-        pp = as.numeric( as.vector( attributes(t)$stats$anc_state_1_pp) )
+        pp = as.numeric( as.vector( attributes(t)$data$anc_state_1_pp) )
         #print(pp)
         
         if (!F) {
@@ -540,7 +535,7 @@ plot_ancestral_states = function(tree_file,
         }
 
         if (node_label_size == 0) {
-            p = p + geom_text(aes(label=sprintf("%.02f", anc_state_1_pp)), hjust="left", nudge_x=node_label_nudge_x, size=node_pp_label_size)
+            p = p + geom_text(aes(label=sprintf("%.02f", as.numeric(anc_state_1_pp))), hjust="left", nudge_x=node_label_nudge_x, size=node_pp_label_size)
         }
         #p = p = scale_fill_continuous(breaks=c(0.6, 0.7, 0.8, 0.9, 1.0))
         
@@ -570,10 +565,10 @@ plot_ancestral_states = function(tree_file,
         p = p + geom_text(aes(label=round(mean, 2)), hjust="left", nudge_x=node_label_nudge_x, size=node_label_size)
 
         # show the size of the 95% CI as color 
-        lowers = as.numeric(levels(attributes(t)$stats$lower_0.95_CI))[attributes(t)$stats$lower_0.95_CI]
-        uppers = as.numeric(levels(attributes(t)$stats$upper_0.95_CI))[attributes(t)$stats$upper_0.95_CI]
+        lowers = as.numeric(levels(attributes(t)$data$lower_0.95_CI))[attributes(t)$data$lower_0.95_CI]
+        uppers = as.numeric(levels(attributes(t)$data$upper_0.95_CI))[attributes(t)$data$upper_0.95_CI]
         diffs = uppers - lowers
-        diffs_df = data.frame(node=names(attributes(t)$stats$lower_0.95_CI), diff_vals=diffs)
+        diffs_df = data.frame(node=names(attributes(t)$data$lower_0.95_CI), diff_vals=diffs)
         p = p %<+% diffs_df 
 
         min_low = min(diffs, na.rm=TRUE)
@@ -604,10 +599,11 @@ plot_ancestral_states = function(tree_file,
     
         }
         
-        if (!("anc_state_1" %in% colnames(attributes(t)$stats))) {
-            anc_data = data.frame(node=names(attributes(t)$stats$end_state_1), 
-                                  anc_state_1=levels(attributes(t)$stats$end_state_1)[attributes(t)$stats$end_state_1],
-                                  anc_state_1_pp=as.numeric(levels(attributes(t)$stats$end_state_1_pp))[attributes(t)$stats$end_state_1_pp])
+        if (!("anc_state_1" %in% colnames(attributes(t)$data))) {
+            anc_data = data.frame(node=names(attributes(t)$data$end_state_1), 
+                                  anc_state_1=levels(attributes(t)$data$end_state_1)[attributes(t)$data$end_state_1],
+                                  anc_state_1_pp=as.numeric(levels(attributes(t)$data$end_state_1_pp))[attributes(t)$data$end_state_1_pp])
+            #p = p %<+% anc_data
         }
         
         # print tips
@@ -664,18 +660,13 @@ plot_ancestral_states = function(tree_file,
 
     } else if (summary_statistic == "PieRange") {
      
-        
-        print("OK")
-        print(t)
-        print("OK2")
-        if (!("start_state_1" %in% colnames(attributes(t)$stats))) {
-            print(attributes(t))
+        if (!("start_state_1" %in% colnames(attributes(t)$data))) {
             print("Start states not found in input tree.")
             return()
         }
 
         # set the root's start state to NA
-        #attributes(t)$stats$start_state_1[n_node] = NA
+        #attributes(t)$data$start_state_1[n_node] = NA
         
         # print tips
         p = p + geom_tippoint(aes(colour=factor(end_state_1)), size=1e-2, alpha=alpha) 
@@ -692,41 +683,28 @@ plot_ancestral_states = function(tree_file,
             p = p + guides(colour=FALSE, order=2)
         }
         p = p + guides(size=FALSE)
-        #p = p + guide_legend(override.aes = list(size=10))
         p = p + guides(colour = guide_legend(override.aes = list(size=5)))
-        #print(state_colors)
         if (use_state_colors) {
-            #used_states = unique( c( p$data$end_state_1, p$data$end_state_2, p$data$end_state_3, p$data$start_state_1, p$data$start_state_2, p$data$start_state_3, "...") )
             used_states = collect_probable_states(p)
             p = p + scale_color_manual(values=state_colors, breaks=state_labels,  name="Range", limits = used_states)
         }
-        
-        #p = p + scale_radius(range = node_size_range)
         p = p + theme(legend.position="left")
         
-        #p = p + coord_cartesian(xlim = xlim_visible, ylim=ylim_visible, expand=TRUE)
-        
-        break_legend = F
-        if (break_legend) {
-            p$data$x = p$data$x + (15 - max(p$data$x))
-            x_breaks = 0:15
-            x_labels = rep("", 16)
-            x_labels[ c(0,5,10,15)+1 ] = c(0,5,10,15)
-            p = p + scale_x_continuous(breaks = x_breaks, labels = rev(x_labels), sec.axis = sec_axis(~ ., breaks = 15-c(6.15, 4.15, 2.55, 1.2), labels=c("+K","+O","+M","+H") ))
-            p = p + theme_tree2()
-            p = p + coord_cartesian(xlim = c(0,20), expand=TRUE)
-            p = p + labs(x="Age (Ma)")
-            p = add_island_times(p)
-            # , axis.line = element_line(colour = "black")
-            p = p + theme(legend.position="left", axis.line = element_line(colour = "black"))
-            p = p + guides(colour = guide_legend(override.aes = list(size=5), nrow=6))
-            #p = p + scale_x_continuous(breaks = c(0,5,10,15), labels = c(15, 10, 5, 0), sec.axis = sec_axis(~ ., breaks = 15-c(6.15, 4.15, 2.55, 1.2), labels=c("+K","+O","+M","+H") ))
-            
-            #p = p + scale_x_continuous(breaks = c(0,5,10,15), labels = c(15, 10, 5, 0), sec.axis = sec_axis(~ ., breaks = 15-c(6.15, 4.15, 2.55, 1.2), labels=c("+K","+O","+M","+H") ))
-            #p = p + theme_tree2()
-            #p = p + coord_cartesian(xlim = c(0,19), expand=TRUE)
-            #p = p + labs(x="Age (Myrs)")
-        }
+        # # MJL: to remove later
+        # break_legend = F
+        # if (break_legend) {
+        #     p$data$x = p$data$x + (15 - max(p$data$x))
+        #     x_breaks = 0:15
+        #     x_labels = rep("", 16)
+        #     x_labels[ c(0,5,10,15)+1 ] = c(0,5,10,15)
+        #     p = p + scale_x_continuous(breaks = x_breaks, labels = rev(x_labels), sec.axis = sec_axis(~ ., breaks = 15-c(6.15, 4.15, 2.55, 1.2), labels=c("+K","+O","+M","+H") ))
+        #     p = p + theme_tree2()
+        #     p = p + coord_cartesian(xlim = c(0,20), expand=TRUE)
+        #     p = p + labs(x="Age (Ma)")
+        #     p = add_island_times(p)
+        #     p = p + theme(legend.position="left", axis.line = element_line(colour = "black"))
+        #     p = p + guides(colour = guide_legend(override.aes = list(size=5), nrow=6))
+        # }
             
         # get anc state matrices (for pie/bar charts)
         #print(t)
@@ -744,7 +722,6 @@ plot_ancestral_states = function(tree_file,
         pies_start = nodepie(dat_state_start,cols=1:(ncol(dat_state_start)-1),color=state_colors,alpha=alpha)
         
         pd = c( rep(tip_pie_diameter, n_tips), rep(node_pie_diameter, n_nodes-n_tips) )
-        #print(pd)
         
         #n_expr = options()$expressions
         #options(expressions=n_expr * 2)
@@ -755,6 +732,8 @@ plot_ancestral_states = function(tree_file,
                             width=pd,
                             hjust=pie_nudge_x,
                             vjust=pie_nudge_y)
+        
+        
         p_shld = inset.revgadgets(tree_view=p_node,
                                 insets=pies_start,
                                 x="parent_shoulder",
@@ -763,38 +742,9 @@ plot_ancestral_states = function(tree_file,
                                 hjust=pie_nudge_x,
                                 vjust=pie_nudge_y)
         
-        #options(expressions=n_expr)
         
-        if (!T) {
-            
-              p = inset.revgadgets(tree_view=p,
-                                insets=pies_end[],
-                                x="node",
-                                height=node_pie_diameter,
-                                width=node_pie_diameter,
-                                hjust=pie_nudge_x,
-                                vjust=pie_nudge_y)
+        p_all = p_shld + coord_cartesian(xlim = xlim_visible, ylim=ylim_visible, expand=TRUE)
         
-        p_tip = inset.revgadgets(tree_view=p_node,
-                            insets=pies_end[all_idx],
-                            x="node",
-                            height=pd,
-                            width=pd,
-                            hjust=pie_nudge_x,
-                            vjust=pie_nudge_y)
-    
-        p_branch = inset.revgadgets(tree_view=p_tip,
-                                insets=pies_start,
-                                x="parent_shoulder",
-                                height=node_pie_diameter*0.9,
-                                width=node_pie_diameter*0.9,
-                                hjust=pie_nudge_x,
-                                vjust=pie_nudge_y)
-        }
-        
-        # save pdf
-        #ggsave(file="out_range.pdf",device="pdf",height=fig_height,width=fig_width)
- 
         return(p_shld)
     } 
     
@@ -808,17 +758,11 @@ plot_ancestral_states = function(tree_file,
     p = p + scale_radius(range = node_size_range)
     p = p + theme(legend.position="left")
     
-    if (show_tree_scale)
-    {
-       #p = p + theme_tree2()
-    }
+    # show title
     p = p + ggtitle(title)
+    
     # set visible area
     p = p + coord_cartesian(xlim = xlim_visible, ylim=ylim_visible, expand=TRUE)
-    
-    if (!(summary_statistic %in% c("PieState", "PieRange"))) {
-        print(p)
-    }
     
     return(p)
 }
