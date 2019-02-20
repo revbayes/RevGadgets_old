@@ -2,4 +2,4 @@ export(rev.plot.div.rates, rev.process.div.rates,
        rev.plot.pop.size, rev.process.pop.size, 
        plot_ancestral_states)
 
-import(ape,coda,geoscale,ggtree)
+import(ape,coda,geoscale,ggtree,ggplot2)

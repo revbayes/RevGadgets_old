@@ -1,4 +1,5 @@
 require(colorspace)
+require(ggplot2)
 
 # modified from inset
 inset.revgadgets = function (tree_view, insets, width = 0.1, height = 0.1, hjust = 0, 
