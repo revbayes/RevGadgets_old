@@ -1,12 +1,14 @@
 require(colorspace)
+require(ggplot2)
 
 # modified from inset
 inset.revgadgets = function (tree_view, insets, width = 0.1, height = 0.1, hjust = 0, 
     vjust = 0, x = "node", pos = 0.5) 
 {
-    require(magrittr)
     df <- tree_view$data[as.numeric(names(insets)), ]
-    x <- match.arg(x, c("node", "branch", "edge","parent_shoulder"))
+    
+    # position subviews based on tree part
+    x <- match.arg(x, c("node", "branch", "edge", "parent_shoulder"))
     if (x == "node") {
         xx <- df$x
     }
@@ -19,10 +21,15 @@ inset.revgadgets = function (tree_view, insets, width = 0.1, height = 0.1, hjust
     yy <- df$y
     xx <- xx - hjust
     yy <- yy - vjust
-    for (i in seq_along(insets)) {
-        tree_view %<>% subview(insets[[i]], x = xx[i], y = yy[i], 
-            width = width, height = height)
-    }
+    
+    if (length(width)==1) width = rep(width, length(insets))
+    if (length(height)==1) height = rep(height, length(insets))
+
+    # add subviews
+    tree_view = tree_view + ggimage:::geom_subview(subview = insets, width = width, 
+        height = height, x = xx, y = yy)
+
+    # return treeview with subviews
     return(tree_view)
 }
 
@@ -149,10 +156,6 @@ assign_state_labels = function(t, state_labels, include_start_states, n_states=3
         x_state = as.vector(x_state)
         x_state_valid = which( x_state != "NA" )
         x_state_invalid = which( x_state == "NA" )
-        #print(x_state)
-        #print(x_state_valid)
-        #print(x_state_invalid)
-        #print("")
         x_state_tmp = unlist(sapply(x_state, function(z) { state_labels[ names(state_labels)==z ] }))
         x_state[x_state_valid] = x_state_tmp
         x_state[x_state_invalid] = NA
@@ -190,7 +193,7 @@ set_pp_factor_range = function(t, include_start_states, n_states=1)
 # for all internal nodes and all sampled states. The matrix will
 # be appropriate for use with the pie/bar inset function in ggtree.
 
-build_state_probs = function(t, state_labels, include_start_states) {
+build_state_probs = function(t, state_labels, include_start_states, p_threshold = 0.01) {
 
     n_states = length(state_labels)
     n_tips = length(attributes(t)$phylo$tip.label)
@@ -219,8 +222,11 @@ build_state_probs = function(t, state_labels, include_start_states) {
             for (j in 1:length(x_tmp))
             {
                 if (!is.na(x_tmp[j])) {
-                    k = which(x_tmp[j]==state_labels)
-                    dat[[s]][n_tmp[j], k] = pp_tmp[j]
+                    
+                    if (pp_tmp[j] > p_threshold) {
+                        k = which(x_tmp[j]==state_labels)
+                        dat[[s]][n_tmp[j], k] = pp_tmp[j]
+                    }
                 }
             }
         }
@@ -242,6 +248,26 @@ build_state_probs = function(t, state_labels, include_start_states) {
     }
     
     return(dat)
+}
+
+collect_probable_states = function(p, p_threshold=0.005)
+{
+    labels = c("end_state", "start_state")
+    index = c(1,2,3)
+    
+    codes = c()
+    labels_pp = c()
+    for (l in labels) {
+        for (i in index) {
+            label_index = paste(l,"_",i,sep="")
+            label_index_pp = paste(l,"_",i,"_pp",sep="")
+            index_threshold = p$data[[ label_index_pp ]] > p_threshold
+            codes = c(codes, unique( p$data[[label_index]][ index_threshold ] ))
+        }
+    }
+    codes = unique(codes)
+    codes = c(codes, "...")
+    return(codes)
 }
 
 
@@ -300,7 +326,8 @@ plot_ancestral_states = function(tree_file,
                                  node_pp_label_nudge_x=0.1,
                                  shoulder_label_size=3, 
                                  shoulder_label_nudge_x=-0.1, 
-                                 pie_diameter=0.1,
+                                 node_pie_diameter=1.10,
+                                 tip_pie_diameter=1.08,
                                  pie_nudge_x=0.0,
                                  pie_nudge_y=0.0,
                                  alpha=0.5, 
@@ -314,6 +341,8 @@ plot_ancestral_states = function(tree_file,
                                  state_labels=NULL,
                                  state_colors=NULL,
                                  title="",
+                                 fig_height=7,
+                                 fig_width=7,
                                  ...) { 
 
     if ( (summary_statistic %in% c("MAP", "mean", "MAPChromosome", "MAPRange", "PieRange", "PieState")) == FALSE ) {
@@ -347,7 +376,7 @@ plot_ancestral_states = function(tree_file,
     if (tip_label_italics) {
         attributes(t)$phylo$tip.label = paste("italic('", attributes(t)$phylo$tip.label, "')", sep="")
     }
-
+    
     # add tip labels
     p = ggtree(t, layout=tree_layout, ladderize=TRUE)
     p = p + geom_tiplab(size=tip_label_size, offset=tip_label_offset, parse=tip_label_italics)
@@ -571,7 +600,6 @@ plot_ancestral_states = function(tree_file,
     
         }
         
-        
         if (!("anc_state_1" %in% colnames(attributes(t)$data))) {
             anc_data = data.frame(node=names(attributes(t)$data$end_state_1), 
                                   anc_state_1=levels(attributes(t)$data$end_state_1)[attributes(t)$data$end_state_1],
@@ -580,44 +608,56 @@ plot_ancestral_states = function(tree_file,
         }
         
         # print tips
-        p = p + geom_tippoint(aes(colour=factor(anc_state_1)), size=tip_node_size, alpha=alpha) 
+        p = p + geom_tippoint(aes(colour=factor(anc_state_1)), size=1e-2) 
+
+        # plot invisible node states (for legend)
+        p = p + geom_nodepoint(aes(colour=factor(anc_state_1), size=0),na.rm=TRUE, alpha=0.0)
+        p = p + geom_nodepoint(aes(colour=factor(anc_state_2), size=0),na.rm=TRUE, alpha=0.0)
+        p = p + geom_nodepoint(aes(colour=factor(anc_state_3), size=0),na.rm=TRUE, alpha=0.0)
+        
         
         # set up the legend
         if (show_state_legend) {
-            p = p + guides(colour=guide_legend("State"), order=1)        
+            p = p + guides(colour=guide_legend("State", override.aes = list(size=5)), order=1)        
         } else {
             p = p + guides(colour=FALSE, order=2)
         }
         p = p + guides(size=FALSE)
         if (use_state_colors) {
-            p = p + scale_color_manual(values=state_colors, breaks=state_labels)
+           p = p + scale_color_manual(values=state_colors, breaks=state_labels)
         }
         
+        # position legend
         p = p + theme(legend.position="left")
         
         # get anc state matrices (for pie/bar charts)
         dat_state_anc = build_state_probs(t, state_labels, include_start_states)$anc
-       
+
         # make pie objects
         n_tips = length(tree$tip.label)
         n_nodes = 2 * n_tips - 1
         node_idx = (n_tips+1):n_nodes
+        tip_idx = 1:n_tips
+        all_idx = 1:n_nodes
         pies_anc = nodepie(dat_state_anc, cols=1:(ncol(dat_state_anc)-1), color=state_colors, alpha=alpha)
         
         # print pies
-        #inset(tree_view=p, insets=pies[node_idx], height=0.06, width=0.06, vjust=0.0)
-        p_node = ggtree:::inset(tree_view=p,
-                                insets=pies_anc[node_idx],
+        
+        # build pie diameters for tips and internal nodes
+        pd = c( rep(tip_pie_diameter, n_tips), rep(node_pie_diameter, n_nodes-n_tips) )
+        p_node = inset.revgadgets(tree_view=p,
+                                insets=pies_anc[all_idx],
                                 x="node",
-                                height=pie_diameter,
-                                width=pie_diameter,
+                                height=pd,
+                                width=pd,
                                 hjust=pie_nudge_x,
                                 vjust=pie_nudge_y)
-
+        
+        
         # save pdf
-        ggsave(file="out_state.pdf",device="pdf",height=7,width=7)
+        # ggsave(file=paste(stree_fn,".out_state.pdf",sep=""),device="pdf",height=7,width=7)
  
-        return(dat_state_anc)
+        return(p_node)
 
     } else if (summary_statistic == "PieRange") {
      
@@ -630,7 +670,7 @@ plot_ancestral_states = function(tree_file,
         #attributes(t)$data$start_state_1[n_node] = NA
         
         # print tips
-        p = p + geom_tippoint(aes(colour=factor(end_state_1)), size=tip_node_size, alpha=alpha) 
+        p = p + geom_tippoint(aes(colour=factor(end_state_1)), size=1e-2, alpha=alpha) 
        
         # plot invisible node states (for legend)
         p = p + geom_nodepoint(aes(colour=factor(start_state_1), size=0),na.rm=TRUE, alpha=0.0)
@@ -643,51 +683,70 @@ plot_ancestral_states = function(tree_file,
         } else {
             p = p + guides(colour=FALSE, order=2)
         }
-         p = p + guides(size=FALSE)
+        p = p + guides(size=FALSE)
+        p = p + guides(colour = guide_legend(override.aes = list(size=5)))
         if (use_state_colors) {
-            p = p + scale_color_manual(values=state_colors, breaks=state_labels)
+            used_states = collect_probable_states(p)
+            p = p + scale_color_manual(values=state_colors, breaks=state_labels,  name="Range", limits = used_states)
         }
-        
-        #p = p + scale_radius(range = node_size_range)
         p = p + theme(legend.position="left")
         
+        # # MJL: to remove later
+        # break_legend = F
+        # if (break_legend) {
+        #     p$data$x = p$data$x + (15 - max(p$data$x))
+        #     x_breaks = 0:15
+        #     x_labels = rep("", 16)
+        #     x_labels[ c(0,5,10,15)+1 ] = c(0,5,10,15)
+        #     p = p + scale_x_continuous(breaks = x_breaks, labels = rev(x_labels), sec.axis = sec_axis(~ ., breaks = 15-c(6.15, 4.15, 2.55, 1.2), labels=c("+K","+O","+M","+H") ))
+        #     p = p + theme_tree2()
+        #     p = p + coord_cartesian(xlim = c(0,20), expand=TRUE)
+        #     p = p + labs(x="Age (Ma)")
+        #     p = add_island_times(p)
+        #     p = p + theme(legend.position="left", axis.line = element_line(colour = "black"))
+        #     p = p + guides(colour = guide_legend(override.aes = list(size=5), nrow=6))
+        # }
+            
         # get anc state matrices (for pie/bar charts)
+        #print(t)
         dat_state_end = build_state_probs(t, state_labels, include_start_states)$end
         dat_state_start = build_state_probs(t, state_labels, include_start_states)$start
-        
         
         # make pie objects
         n_tips = length(tree$tip.label)
         n_nodes = 2 * n_tips - 1
         node_idx = (n_tips+1):n_nodes
-        node_idx_no_root = (n_tips+1):(n_nodes-1)
+        tip_idx = 1:n_tips
+        all_idx = 1:n_nodes
+        
         pies_end = nodepie(dat_state_end,cols=1:(ncol(dat_state_end)-1),color=state_colors,alpha=alpha)
         pies_start = nodepie(dat_state_start,cols=1:(ncol(dat_state_start)-1),color=state_colors,alpha=alpha)
         
-        # print pies
-        hjust=-tree$edge.length/2
-
-        p_node = ggtree:::inset(tree_view=p,
-                                insets=pies_end[node_idx],
-                                x="node",
-                                height=pie_diameter,
-                                width=pie_diameter,
-                                hjust=pie_nudge_x,
-                                vjust=pie_nudge_y)
-       
-        p_branch = inset.revgadgets(tree_view=p_node,
+        pd = c( rep(tip_pie_diameter, n_tips), rep(node_pie_diameter, n_nodes-n_tips) )
+        
+        #n_expr = options()$expressions
+        #options(expressions=n_expr * 2)
+        p_node =  inset.revgadgets(tree_view=p,
+                            insets=pies_end[all_idx],
+                            x="node",
+                            height=pd,
+                            width=pd,
+                            hjust=pie_nudge_x,
+                            vjust=pie_nudge_y)
+        
+        
+        p_shld = inset.revgadgets(tree_view=p_node,
                                 insets=pies_start,
                                 x="parent_shoulder",
-                                height=pie_diameter*0.85,
-                                width=pie_diameter*0.85,
+                                height=node_pie_diameter*0.9,
+                                width=node_pie_diameter*0.9,
                                 hjust=pie_nudge_x,
                                 vjust=pie_nudge_y)
         
-        # save pdf
-        ggsave(file="out_range.pdf",device="pdf",height=7,width=7)
- 
-        #return(p)
-        return(list(start=dat_state_start,end=dat_state_end))
+        
+        p_all = p_shld + coord_cartesian(xlim = xlim_visible, ylim=ylim_visible, expand=TRUE)
+        
+        return(p_shld)
     } 
     
     
@@ -700,17 +759,11 @@ plot_ancestral_states = function(tree_file,
     p = p + scale_radius(range = node_size_range)
     p = p + theme(legend.position="left")
     
-    if (show_tree_scale)
-    {
-       #p = p + theme_tree2()
-    }
+    # show title
     p = p + ggtitle(title)
+    
     # set visible area
     p = p + coord_cartesian(xlim = xlim_visible, ylim=ylim_visible, expand=TRUE)
-    
-#    if (!(summary_statistic %in% c("PieState", "PieRange"))) {
-#        print(p)
-#    }
     
     return(p)
 }
