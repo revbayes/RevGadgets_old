@@ -44,10 +44,7 @@ rev.read.mcmc.output.rates.through.time = function(times_file_name, rates_file_n
     order <- order(times)
     times <- times[order]
     rates <- c(rates[1],rates[-1][order])
-#    rates <- rates[order]
     res   <- rates[findInterval(intervals[-1],times)+1]
-#    res   <- rates[findInterval(intervals,times)+1]
-#a <- sum(is.finite(res)==FALSE); if (a > 0) cat(a," - ",length(times),length(intervals),intervals," --- \n")
     res   <- rev(res)
     return (res)
   } )))
