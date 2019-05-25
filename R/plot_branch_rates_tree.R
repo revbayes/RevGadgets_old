@@ -104,7 +104,7 @@ addLegend = function(tree, bins, colors, width=0.1, height=0.4, lwd=1, title="po
 ################################################################################
 plot_branch_rates_tree = function(tree_file, 
                                   branch_rates_file,
-                                  parameter_name="lambda"
+                                  parameter_name="lambda",
                                  ...) { 
 
     if ( (parameter_name %in% c("lambda", "mu")) == FALSE ) {
