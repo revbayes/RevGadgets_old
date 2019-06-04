@@ -102,25 +102,25 @@ addLegend = function(tree, bins, colors, width=0.1, height=0.4, lwd=1, title="po
 #
 #
 ################################################################################
-plot_branch_rates_tree = function(tree_file, 
+plot_branch_rates_tree = function(tree_file,
                                   branch_rates_file,
                                   parameter_name="lambda",
-                                 ...) { 
+                                 ...) {
 
     if ( (parameter_name %in% c("lambda", "mu")) == FALSE ) {
         print("Invalid parameter to plot.")
         return()
     }
-    
+
 
     # read in tree
     tree = try(read.tree(tree_file), silent=TRUE)
     if ( class(tree) == "try-error"  ) {
         tree = try(read.nexus(tree_file), silent=TRUE)
     }
-    
+
     map = matchNodes(tree)
-    
+
     # read the posterior distributions
     samples = read.table(branch_rates_file, sep="\t", stringsAsFactors=FALSE, check.names=FALSE, header=TRUE)
 
@@ -134,33 +134,100 @@ plot_branch_rates_tree = function(tree_file,
     rate_mean = colMeans(rate_output)
 
     branch_rates = rate_mean[-length(rate_mean)]
-    
+
     # compute the intervals
     rate_intervals = pretty(unlist(branch_rates), n=1001)
-    
+
     tree_tbl = as_data_frame(tree)
-    
-    # compute the legend 
+
+    # compute the legend
     legend_intervals = pretty(rate_intervals)
     legend_intervals = legend_intervals[legend_intervals > min(rate_intervals) & legend_intervals < max(rate_intervals)]
     legend_intervals_at = (legend_intervals - min(rate_intervals)) / diff(range(rate_intervals))
-    
-    
+
+
     # get the branch rates
     these_rates = branch_rates[paste0("avg_",parameter_name,"[",map$Rev[match(tree$edge[,2], map$R)],"]")]
 
     rate_tree = tree
     rate_tree$edge.length = these_rates
     rate_tbl = as_data_frame(rate_tree)
-  
+
     tree_tbl  = as_data_frame(tree)
     tree_tbl$rates = rate_tbl$branch.length
-  
+
     this_tree = as.treedata(tree_tbl)
-  
-    tree_plot = ggtree(this_tree, aes(color=rates)) + scale_color_continuous(paste0("branch-specific ",parameter_name), low="blue", high="green", limits=range(rate_intervals)) + theme(legend.position=c(0.2,0.85), legend.background=element_blank()) 
-        
-    
+
+    tree_plot = ggtree(this_tree, aes(color=rates)) + scale_color_continuous(paste0("branch-specific ",parameter_name), low="blue", high="green", limits=range(rate_intervals)) + theme(legend.position=c(0.2,0.85), legend.background=element_blank())
+
+
     return(tree_plot)
+}
+
+
+################################################################################
+#
+# @brief Function to plot branch-specific parameters on a phylogeny..
+#
+#        For ...
+#
+# @date Last modified: 2019-06-04
+# @author Michael May and Sebastian Hoehna
+# @version 1.0
+# @since 2019-05-24, version 1.0.0
+#
+# @param    tree                    phylo       The tree on which to make the parameters
+# @param    output_file             character   The file with the branch-specific estimates.
+# @param    parameter_name          character   The name of the parameter to plot.
+#
+#
+################################################################################
+plot_relaxed_branch_rates_tree = function(tree,
+                                          output_file,
+                                          parameter_name="branch_rates",
+                                          ...) {
+
+  # map the branches between R and RevBayes
+  map = matchNodes(tree)
+
+  # read the posterior distributions
+  samples = read.table(output_file, sep="\t", stringsAsFactors=FALSE, check.names=FALSE, header=TRUE)
+
+  # discard some burnin (25%)
+  burnin = 0.25
+  n_samples = nrow(samples)
+
+  # combine the mcmc output
+  samples_thinned = samples[-c(1:ceiling(n_samples * burnin)), grepl(parameter_name, colnames(samples))]
+
+  # store the parameters
+  parameter_mean = colMeans(samples_thinned)
+
+  # compute the intervals
+  parameter_intervals = pretty(unlist(parameter_mean), n=1001)
+
+  tree_tbl = as_data_frame(tree)
+
+  # compute the legend
+  legend_intervals = pretty(parameter_intervals)
+  legend_intervals = legend_intervals[legend_intervals > min(parameter_intervals) & legend_intervals < max(parameter_intervals)]
+  legend_intervals_at = (legend_intervals - min(parameter_intervals)) / diff(range(parameter_intervals))
+
+  # get the branch rates
+  these_rates = parameter_mean[paste0(parameter_name,"[",map$Rev[match(tree$edge[,2], map$R)],"]")]
+
+  rate_tree = tree
+  rate_tree$edge.length = these_rates
+  rate_tbl = as_data_frame(rate_tree)
+
+  tree_tbl  = as_data_frame(tree)
+  tree_tbl$rates = rate_tbl$branch.length
+
+  this_tree = as.treedata(tree_tbl)
+
+  tree_plot = ggtree(this_tree, aes(color=rates)) + scale_color_continuous(parameter_name, low="blue", high="green", limits=range(parameter_intervals)) + theme(legend.position=c(0.2,0.85), legend.background=element_blank())
+
+
+  return(tree_plot)
 }
 
