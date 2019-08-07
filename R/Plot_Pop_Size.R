@@ -21,13 +21,14 @@
 ################################################################################
 
 rev.plot.pop.size = function(output,
+                             fig.types=c("population size", "population size shift prob"),
                              time=100,
                              xlab="years ago",col=NULL,col.alpha=50,
                              xaxt="n",yaxt="s",pch=19,
                              use.smoothing=FALSE,
                              ...){
 
-fig.types=c("population size", "population size shift prob")
+#fig.types=c("population size", "population size shift prob")
 
 #    # Check that fig type is valid
 #    validFigTypes <- c("speciation rate","speciation shift times","speciation Bayes factors",

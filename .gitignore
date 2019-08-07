@@ -5,3 +5,4 @@
 .Rbuildignore
 RevGadgets.Rproj
 **/.DS_Store
+*.Rproj
