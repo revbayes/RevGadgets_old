@@ -28,25 +28,25 @@
 #
 ################################################################################
 
-rev.plot.nbLineages.OBDP = function(Kt_mean,
-                                    xlab="Time",
-                                    ylab="Number of lineages",
-                                    col.Hidden = "dodgerblue3",
-                                    col.Observed = "gray25",
-                                    col.Total = "forestgreen",
-                                    col.Hidden.interval = "dodgerblue2",
-                                    col.Total.interval = "darkolivegreen4",
-                                    palette.Hidden = c("transparent", "dodgerblue2", "dodgerblue3", "dodgerblue4", "black"),
-                                    palette.Total = c("transparent", "green4", "forestgreen", "black"),
-                                    line.size=0.7,
-                                    interval.line.size=0.5,
-                                    show.Hidden=TRUE,
-                                    show.Observed=TRUE,
-                                    show.Total=TRUE,
-                                    show.intervals=TRUE,
-                                    show.densities=TRUE,
-                                    show.expectations=TRUE,
-                                    use.interpolate=TRUE){
+rev.plot.nbLineages = function( Kt_mean,
+                                xlab="Time",
+                                ylab="Number of lineages",
+                                col.Hidden = "dodgerblue3",
+                                col.Observed = "gray25",
+                                col.Total = "forestgreen",
+                                col.Hidden.interval = "dodgerblue2",
+                                col.Total.interval = "darkolivegreen4",
+                                palette.Hidden = c("transparent", "dodgerblue2", "dodgerblue3", "dodgerblue4", "black"),
+                                palette.Total = c("transparent", "green4", "forestgreen", "black"),
+                                line.size=0.7,
+                                interval.line.size=0.5,
+                                show.Hidden=TRUE,
+                                show.Observed=TRUE,
+                                show.Total=TRUE,
+                                show.intervals=TRUE,
+                                show.densities=TRUE,
+                                show.expectations=TRUE,
+                                use.interpolate=TRUE ){
   
   N <- length(Kt_mean)-8                                                                # Maximal number of hidden lineages
   
@@ -129,15 +129,13 @@ rev.plot.nbLineages.OBDP = function(Kt_mean,
 # @param    popSize_distribution_matrices_file      character      The number of expected diversification-rate changes.
 # @param    trees_trace_file                        character      The number of expected diversification-rate changes.
 # @param    weight_trees_posterior                  bool           Wether to combine trees uniformly or weighted according to their posterior probabilities.
-# @param    t0                                      numeric        Ending time of the process.
 #
 #
 ################################################################################
 
-rev.process.nbLineages.OBDP = function(popSize_distribution_matrices_file, 
-                                       trees_trace_file, 
-                                       weight_trees_posterior=T, 
-                                       t0=0){
+rev.process.nbLineages = function( popSize_distribution_matrices_file,
+                                   trees_trace_file, 
+                                   weight_trees_posterior=T ){
 
   ## Import Kt : probability distribution of the number of hidden lineages through time
   Kt_trace_lines <- readLines(popSize_distribution_matrices_file)
@@ -152,7 +150,7 @@ rev.process.nbLineages.OBDP = function(popSize_distribution_matrices_file,
   trees <- read.table(trees_trace_file, header = T)
   trees$obd_tree <- sapply(trees$obd_tree, function(tree){read.tree(text=as.character(tree))})
   nb_trees <- length(trees$Iteration)                                               # Total number of trees
-  burnin <- round((nb_trees-length(Kt_trace[,1])/S)/nb_trees*100)                   # Number of trees in the burnin
+  burnin <- nb_trees-length(Kt_trace[,1])/S                                         # Number of trees in the burnin
 
   ## Add the iterations to Kt_trace
   iterations <- trees$Iteration[(burnin+1):nb_trees]
@@ -213,8 +211,8 @@ rev.process.nbLineages.OBDP = function(popSize_distribution_matrices_file,
   Kt_mean$NbObservedLin <- round(observedLin_mean)
   
   ## Get the 95% credence interval around the number of hidden lineages
-  Kt_mean[1:51] <- t(apply(Kt_mean[1:51], 1, function(row){row/sum(row)}))   # Force lines to sum to 1 (correct numerical uncertainties)
-  Kt_mean_cumsum <- apply(Kt_mean[1:51], 1, cumsum)
+  Kt_mean[1:(N+1)] <- t(apply(Kt_mean[1:(N+1)], 1, function(row){row/sum(row)}))   # Force lines to sum to 1 (correct numerical uncertainties)
+  Kt_mean_cumsum <- apply(Kt_mean[1:(N+1)], 1, cumsum)
   Kt_mean$NbHiddenLin0.025 <- apply(Kt_mean_cumsum, 2, function(col){which(col>0.025)[1]-1})
   Kt_mean$NbHiddenLin0.5 <- apply(Kt_mean_cumsum, 2, function(col){which(col>0.5)[1]})
   Kt_mean$NbHiddenLin0.975 <- apply(Kt_mean_cumsum, 2, function(col){which(col>0.975)[1]})
