@@ -126,57 +126,75 @@ rev.plot.nbLineages = function( Kt_mean,
 # @date Last modified: 2020-04-03
 # @author Jeremy Andreoletti
 #
-# @param    popSize_distribution_matrices_file      character      The number of expected diversification-rate changes.
-# @param    trees_trace_file                        character      The number of expected diversification-rate changes.
+# @param    start_time_trace_file                   character      The trace of the starting times along the MCMC chain.
+# @param    popSize_distribution_matrices_file      character      The Kt matrices computed with `fnInferAncestralPopSize` in RevBayes.
+# @param    trees_trace_file                        character      The corresponding trees.
 # @param    weight_trees_posterior                  bool           Wether to combine trees uniformly or weighted according to their posterior probabilities.
 #
 #
 ################################################################################
 
-rev.process.nbLineages = function( popSize_distribution_matrices_file,
-                                   trees_trace_file, 
+rev.process.nbLineages = function( start_time_trace_file, 
+                                   popSize_distribution_matrices_file,
+                                   trees_trace_file,
                                    weight_trees_posterior=T ){
-
+  
+  ## Import start times
+  start_time_trace_lines <- readLines(start_time_trace_file)
+  start_time_trace_lines <- gsub("\\[| |\\]| ,|\t|;", "", start_time_trace_lines)   # Remove unwanted characters
+  start_times <- -t(read.csv(text=start_time_trace_lines[2], header=F))
+    
   ## Import Kt : probability distribution of the number of hidden lineages through time
   Kt_trace_lines <- readLines(popSize_distribution_matrices_file)
-  S <- diff(which(lapply(Kt_trace_lines, function(x){grep(";", x)})==1))[1]         # Get the number of time points (nb of lines between two ";" separators)
-  Kt_trace_lines <- gsub("\\[| |\\]| ,|\t|;", "", Kt_trace_lines)[-1]               # Remove unwanted characters
-  Kt_trace <- read.csv(text = Kt_trace_lines, header = FALSE, na.strings = "nan")
-  Kt_trace[is.na(Kt_trace)] <- 0                                                    # Set NA values to 0
+  Kt_trace_lines <- gsub("\\[| |\\]| ,|\t|;", "", Kt_trace_lines)                   # Remove unwanted characters
+  Kt_trace <- read.csv(text = Kt_trace_lines[-1], header = FALSE, na.strings = "nan")
+  # Kt_trace[is.na(Kt_trace)] <- 0                                                    # Set NA values to 0
+  S <- length(Kt_trace[,1])/length(start_times)                                     # Number of time points (nb of lines / nb of trees)
   N <- length(Kt_trace)-1                                                           # Maximal number of hidden lineages
   names(Kt_trace) <- 0:N                                                            # Set names to the number of hidden lineages
-
+  NA_rows <- which(rowSums(is.na(Kt_trace))==N+1)                                   # Get rows with only NAs
+  Kt_trace[NA_rows,] <- cbind(rep(1, length(NA_rows)), 
+                              matrix(0, nrow=length(NA_rows), ncol=N))              # NA rows are considered to have 0 hidden lineages
+  
   ## Import the corresponding tree : get the number of observed lineages through time (LTT)
-  trees <- read.table(trees_trace_file, header = T)
-  trees$obd_tree <- sapply(trees$obd_tree, function(tree){read.tree(text=as.character(tree))})
+  trees_trace <- read.table(trees_trace_file, header = T)
+  trees_trace$obd_tree <- sapply(trees_trace$obd_tree, function(tree){read.tree(text=as.character(tree))})
+  burnin <- length(trees_trace$Iteration)-length(start_times)                             # Number of trees in the burnin
+  print (paste("Burnin of", burnin, "trees over", length(trees_trace$Iteration)))
+  trees <- trees_trace[-(1:burnin),]                                                # Remove trees in the burnin
   nb_trees <- length(trees$Iteration)                                               # Total number of trees
-  burnin <- nb_trees-length(Kt_trace[,1])/S                                         # Number of trees in the burnin
-
+  
   ## Add the iterations to Kt_trace
-  iterations <- trees$Iteration[(burnin+1):nb_trees]
+  iterations <- trees$Iteration[1:nb_trees]
   Kt_trace$Iteration <- rep(iterations, each=S)                                     # Add an iteration number column
-
+  
+  ## Add root edges lengths
+  get_root_age <- function(tree){ltt.plot.coords(tree)[2]}
+  root_times <- sapply(trees$obd_tree, get_root_age)
+  root_edge_lengths <- root_times-start_times
+  for (i in 1:nb_trees){
+    trees$obd_tree[[i]]$root.edge <- trees$obd_tree[[i]]$root.edge + root_edge_lengths[i]
+  }
+    
   ## Browse all iterations
   Kt_mean <- matrix(0, nrow=S, ncol=N+1)
   observedLin_mean <- rep(0, S)
-  start_age <- function(tree){ltt.plot.coords(tree)[1]}
-  timePoints <- seq(0, min(sapply(trees$obd_tree, start_age)), length.out = S)    # Get S time points between 0 and the oldest starting time
+  timePoints <- seq(0, min(start_times), length.out = S)                            # Get S time points between 0 and the oldest starting time
   posteriors <- exp(trees$Posterior-max(trees$Posterior))
   posteriors <- posteriors/sum(posteriors)
-  for (i in (burnin+1):nb_trees){
-    ### Increment the distribution of number of hidden lineades
+  if (weight_trees_posterior){
+    plot(trees$Iteration, posteriors, 
+         main="Posterior probabilities of the MCMC trees for weighting", 
+         xlab = "MCMC iteration", ylab = "Posterior probability")
+  }
+  for (i in 1:nb_trees){
+    ### Increment the distribution of number of hidden lineages
     it <- trees$Iteration[i]
     print(paste("Tree", it, "out of", trees$Iteration[nb_trees]))
     Kt <- Kt_trace[Kt_trace$Iteration==it,-which(names(Kt_trace)=="Iteration")]
-    lines_sum <- apply(Kt, 1, sum)
-    for (j in 1:S){
-      if (lines_sum[j]==0){
-        Kt[j,1] <- 1.0                                      # Empty lines are considered to have 0 hidden lineages
-      }
-      else if (lines_sum[j]!=0){
-        Kt[j,] <- Kt[j,]/lines_sum[j]                       # Normalise lines to 1 (several lines at 0.9999 or 1.0001)
-      }
-    }
+    
+    Kt <- Kt/rowSums(Kt)                                    # Normalise lines to 1 (several lines at 0.9999 or 1.0001)
+    
     if (weight_trees_posterior){
       Kt_mean <- Kt_mean + Kt*posteriors[i]
     }
