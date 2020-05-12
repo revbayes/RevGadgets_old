@@ -158,7 +158,7 @@ rev.process.nbLineages = function( start_time_trace_file,
   
   ## Import the corresponding tree : get the number of observed lineages through time (LTT)
   trees_trace <- read.table(trees_trace_file, header = T)
-  trees_trace$obd_tree <- sapply(trees_trace$obd_tree, function(tree){read.tree(text=as.character(tree))})
+  trees_trace$obd_tree <- lapply(trees_trace$obd_tree, function(tree){read.tree(text=as.character(tree))})
   burnin <- length(trees_trace$Iteration)-length(start_times)                             # Number of trees in the burnin
   print (paste("Burnin of", burnin, "trees over", length(trees_trace$Iteration)))
   trees <- trees_trace[-(1:burnin),]                                                # Remove trees in the burnin

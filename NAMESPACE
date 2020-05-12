@@ -1,6 +1,6 @@
 export(rev.plot.div.rates, rev.process.div.rates,
        rev.plot.pop.size, rev.process.pop.size,
-       rev.plot.nbLineages.OBDP, rev.process.nbLineages.OBDP,
+       rev.plot.nbLineages, rev.process.nbLineages,
        plot_ancestral_states,
        plot_branch_rates_tree,
        plot_relaxed_branch_rates_tree)
