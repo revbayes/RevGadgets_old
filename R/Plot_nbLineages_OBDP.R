@@ -11,19 +11,19 @@
 # @param    line.size                 numeric           The width of the lineage plot line.
 # @param    interval.line.size        numeric           The width of the credence interval.
 # @param    col.Hidden                character         The color of the hidden lineages plot line.
-# @param    col.Observed              character         The color of the observed lineages plot line.
+# @param    col.LTT                   character         The color of the LTT plot line.
 # @param    col.Total                 character         The color of the total lineages plot line.
 # @param    col.Hidden.interval       character         The color of the credence interval lines around the hidden lineages plot.
 # @param    col.Total.interval        character         The color of the credence interval lines around the total lineages plot.
 # @param    palette.Hidden            character         The palette of the hidden lineages plot distribution.
 # @param    palette.Total             character         The palette of the total lineages plot distribution.
-# @param    show.Hidden               boolean           Wether to show the plot for hidden lineages.
-# @param    show.Observed             boolean           Wether to show the plot for observed lineages.
-# @param    show.Total                boolean           Wether to show the plot for total lineages.
-# @param    show.intervals            boolean           Wether to show the credence intervals.
-# @param    show.densities            boolean           Wether to show the diversity densities.
-# @param    show.expectations         boolean           Wether to show the diversity expectations.
-# @param    use.interpolate           boolean           Wether to interpolate densities.
+# @param    show.Hidden               boolean           Whether to show the plot for hidden lineages.
+# @param    show.LTT                  boolean           Whether to show the plot for observed lineages.
+# @param    show.Total                boolean           Whether to show the plot for total lineages.
+# @param    show.intervals            boolean           Whether to show the credence intervals.
+# @param    show.densities            boolean           Whether to show the diversity densities.
+# @param    show.expectations         boolean           Whether to show the diversity expectations.
+# @param    use.interpolate           boolean           Whether to interpolate densities.
 #
 #
 ################################################################################
@@ -31,8 +31,9 @@
 rev.plot.nbLineages = function( Kt_mean,
                                 xlab="Time",
                                 ylab="Number of lineages",
+                                xticks.n.breaks = 5,
                                 col.Hidden = "dodgerblue3",
-                                col.Observed = "gray25",
+                                col.LTT = "gray25",
                                 col.Total = "forestgreen",
                                 col.Hidden.interval = "dodgerblue2",
                                 col.Total.interval = "darkolivegreen4",
@@ -41,7 +42,7 @@ rev.plot.nbLineages = function( Kt_mean,
                                 line.size=0.7,
                                 interval.line.size=0.5,
                                 show.Hidden=TRUE,
-                                show.Observed=TRUE,
+                                show.LTT=TRUE,
                                 show.Total=TRUE,
                                 show.intervals=TRUE,
                                 show.densities=TRUE,
@@ -53,17 +54,13 @@ rev.plot.nbLineages = function( Kt_mean,
   ## Format Kt_mean for plotting
   Kt_mean_plot <- Kt_mean %>% pivot_longer(-c("TimePoints", "NbObservedLin", "aggregNbHiddenLin", "aggregNbTotalLin", "NbHiddenLin0.025", "NbHiddenLin0.5", "NbHiddenLin0.975", "NbTotalLin0.025", "NbTotalLin0.5", "NbTotalLin0.975"), names_to="NbHiddenLin", values_to="ProbabilityDensity")
   Kt_mean_plot$NbHiddenLin <- as.integer(Kt_mean_plot$NbHiddenLin)
-  # Kt_mean_plot <- Kt_mean_plot[Kt_mean_plot$ProbabilityDensity!=0,]                   # Remove 0-probability rows
-  
+
   ## Get the distribution of the total number of lineages
   Kt_mean_plot$NbTotalLin <- Kt_mean_plot$NbObservedLin + Kt_mean_plot$NbHiddenLin
-  Kt_mean_plot <- Kt_mean_plot[Kt_mean_plot$NbTotalLin < max(Kt_mean$NbTotalLin0.975)*1.1,]   # Remove lowest probability rows
-  if (!show.Total){
-    Kt_mean_plot <- Kt_mean_plot[Kt_mean_plot$NbHiddenLin < max(Kt_mean$NbHiddenLin0.975)*1.1,]   # Remove lowest probability rows
-  }
+  Kt_mean_plot <- Kt_mean_plot[Kt_mean_plot$ProbabilityDensity>1e-3,]                   # Remove lowest probability rows
   
   ## Plot densities and LTTs
-  cols    <- c( "c1" = col.Hidden, "c2" = col.Observed, "c3" = col.Total, "H.95%" = col.Hidden.interval, "T.95%" = col.Total.interval )
+  cols    <- c( "c1" = col.Hidden, "c2" = col.LTT, "c3" = col.Total, "H.95%" = col.Hidden.interval, "T.95%" = col.Total.interval )
   
   p <- ggplot(Kt_mean_plot, aes(x=TimePoints, y=NbTotalLin, z = ProbabilityDensity))
   
@@ -100,7 +97,7 @@ rev.plot.nbLineages = function( Kt_mean,
   }
   
   ### Plot the number of observed lineages : mean
-  if (show.Observed){
+  if (show.LTT){
     p <- p +
       geom_line(aes(y=NbObservedLin, color="c2"), size=line.size)
   }
@@ -108,8 +105,8 @@ rev.plot.nbLineages = function( Kt_mean,
   ### Legend and axes
   p <- p + 
     scale_color_manual(name = "Lineages", breaks = c("c1", "H.95%", "c2", "c3", "T.95%"), 
-                       values = cols, labels = c("Hidden", "95% credence interval", "Observed", "Total", "95% credence interval")) +
-    scale_x_continuous(name = xlab, expand = c(0.01,0.01)) +   
+                       values = cols, labels = c("Hidden", "95% credence interval", "LTT", "Total", "95% credence interval")) +
+    scale_x_continuous(name = xlab, expand = c(0.01,0.01), n.breaks = xticks.n.breaks, minor_breaks=NULL) +   
     scale_y_continuous(name = ylab, expand = c(0.01,0.01)) + 
     theme(panel.background=element_rect(fill="white"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
     ggtitle("Probability density of the number of lineages through time")
@@ -129,7 +126,7 @@ rev.plot.nbLineages = function( Kt_mean,
 # @param    start_time_trace_file                   character      The trace of the starting times along the MCMC chain.
 # @param    popSize_distribution_matrices_file      character      The Kt matrices computed with `fnInferAncestralPopSize` in RevBayes.
 # @param    trees_trace_file                        character      The corresponding trees.
-# @param    weight_trees_posterior                  bool           Wether to combine trees uniformly or weighted according to their posterior probabilities.
+# @param    weight_trees_posterior                  bool           Whether to combine trees uniformly or weighted according to their posterior probabilities.
 #
 #
 ################################################################################
@@ -148,7 +145,7 @@ rev.process.nbLineages = function( start_time_trace_file,
   Kt_trace_lines <- readLines(popSize_distribution_matrices_file)
   Kt_trace_lines <- gsub("\\[| |\\]| ,|\t|;", "", Kt_trace_lines)                   # Remove unwanted characters
   Kt_trace <- read.csv(text = Kt_trace_lines[-1], header = FALSE, na.strings = "nan")
-  # Kt_trace[is.na(Kt_trace)] <- 0                                                    # Set NA values to 0
+  # Kt_trace[is.na(Kt_trace)] <- 0                                                  # Set NA values to 0
   S <- length(Kt_trace[,1])/length(start_times)                                     # Number of time points (nb of lines / nb of trees)
   N <- length(Kt_trace)-1                                                           # Maximal number of hidden lineages
   names(Kt_trace) <- 0:N                                                            # Set names to the number of hidden lineages
@@ -159,9 +156,13 @@ rev.process.nbLineages = function( start_time_trace_file,
   ## Import the corresponding tree : get the number of observed lineages through time (LTT)
   trees_trace <- read.table(trees_trace_file, header = T)
   trees_trace$obd_tree <- lapply(trees_trace$obd_tree, function(tree){read.tree(text=as.character(tree))})
-  burnin <- length(trees_trace$Iteration)-length(start_times)                             # Number of trees in the burnin
+  burnin <- length(trees_trace$Iteration)-length(start_times)                       # Number of trees in the burnin
   print (paste("Burnin of", burnin, "trees over", length(trees_trace$Iteration)))
-  trees <- trees_trace[-(1:burnin),]                                                # Remove trees in the burnin
+  if (burnin != 0){
+    trees <- trees_trace[-(1:burnin),]                                              # Remove trees in the burnin
+  }else{
+    trees <- trees_trace
+  }
   nb_trees <- length(trees$Iteration)                                               # Total number of trees
   
   ## Add the iterations to Kt_trace
