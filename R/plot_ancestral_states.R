@@ -242,7 +242,7 @@ build_state_probs = function(t, state_labels, include_start_states, p_threshold 
                 rem_prob[i] = rem_prob[i] - dat[[s]][i,j]
             }
         }
-        dat[[s]]$`...` = rem_prob
+        dat[[s]]$`misc.` = rem_prob
         dat[[s]]$node = 1:n_node
         #print(dat[[s]][250:260,])
     }
@@ -266,7 +266,7 @@ collect_probable_states = function(p, p_threshold=0.005)
         }
     }
     codes = unique(codes)
-    codes = c(codes, "...")
+    codes = c(codes, "misc.")
     return(codes)
 }
 
