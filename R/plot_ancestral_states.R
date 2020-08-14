@@ -1,36 +1,38 @@
 require(colorspace)
 require(ggplot2)
 
-# modified from inset
 inset.revgadgets = function (tree_view, insets, width = 0.1, height = 0.1, hjust = 0, 
-    vjust = 0, x = "node", pos = 0.5) 
-{
+    vjust = 0, x = "node", pos = 0.5) {
+    # Annotates a ggtree plot with additional insets
+    # Modified from ggtree::inset to also include the option for "parent_shoulder"
+    #
+    # Arguments:
+    #     tree_view: ggtree object
+    #     insets: list of ggplot objects to be inset
+    #     width: width of inset
+    #     height: height of inset
+    #     x: positioning of inset (must be either "node", "branch", "edge", or "parent_shoulder")
+    
     df <- tree_view$data[as.numeric(names(insets)), ]
     
     # position subviews based on tree part
     x <- match.arg(x, c("node", "branch", "edge", "parent_shoulder"))
     if (x == "node") {
         xx <- df$x
-    }
-    else if (x == "parent_shoulder") {
+    } else 
+    if (x == "parent_shoulder") {
         xx <- df$x[ match(df$parent, df$node) ]
-    }
-    else {
+    } else {
         xx <- df$branch
     }
     yy <- df$y
     xx <- xx - hjust
     yy <- yy - vjust
     
-    if (length(width)==1) width = rep(width, length(insets))
-    if (length(height)==1) height = rep(height, length(insets))
-
-    # add subviews
-    tree_view = tree_view + ggimage:::geom_subview(subview = insets, width = width, 
-        height = height, x = xx, y = yy)
-
-    # return treeview with subviews
-    return(tree_view)
+    tree_view + geom_subview(subview = insets, aes(x = x, y = y),
+                             data = data.frame(x = xx, y = yy),
+                             width = width, height = height)
+    
 }
 
 # modified from https://github.com/GuangchuangYu/ggtree/blob/master/R/tree-utilities.R
@@ -130,9 +132,8 @@ getParent <- function(tr, node) {
 }
 
 # set custom state labels
-assign_state_labels = function(t, state_labels, include_start_states, n_states=3)
+assign_state_labels = function(t, state_labels, include_start_states)
 {
-
     # exit if no state labels provided
     if (is.null(state_labels)) {
         return(t)
@@ -141,12 +142,15 @@ assign_state_labels = function(t, state_labels, include_start_states, n_states=3
     # what is the ancestral state name tag?
     if (include_start_states) {
         state_pos_str_base = c("start_state_", "end_state_")
+        state_pos_str_to_update <- 
+          names(t@data)[grep(names(t@data), pattern="^start_state_[0-9]$|^end_state_[0-9]$")]
     } else {
         state_pos_str_base = c("anc_state_")
+        state_pos_str_to_update <- names(t@data)[grep(names(t@data), pattern="^anc_state_[0-9]$")]
     }
     
     # create list of ancestral state name tags
-    state_pos_str_to_update = c(sapply(1:n_states, function(x) { paste(state_pos_str_base,x,sep="")}))
+    #state_pos_str_to_update = c(sapply(c(1:n_states, "other"), function(x) { paste(state_pos_str_base,x,sep="")}))
     
     # overwrite state labels
     for (m in state_pos_str_to_update)
@@ -309,7 +313,7 @@ collect_probable_states = function(p, p_threshold=0.005)
 #
 #
 ################################################################################
-plot_ancestral_states = function(tree_file, 
+plot_ancestral_states = function(tree, 
                                  summary_statistic="MAP", 
                                  tree_layout="rectangular",
                                  include_start_states=FALSE, 
@@ -351,8 +355,12 @@ plot_ancestral_states = function(tree_file,
     }
 
     # read in tree
-    t = read.beast(tree_file)
-
+    if(is.character(tree)){
+      t = read.beast(tree)  
+    } else {
+      t = tree
+    }
+    
     # add state labels
     #print(state_labels)
     t = assign_state_labels(t, state_labels, include_start_states)
@@ -443,7 +451,8 @@ plot_ancestral_states = function(tree_file,
             p = p + guides(colour=FALSE)
         }
 
-    } else if (summary_statistic == "MAPRange") {
+    } else 
+    if (summary_statistic == "MAPRange") {
         if (!include_start_states) {
             warning("Ignoring that include_start_states is set to FALSE")
         }
@@ -503,7 +512,8 @@ plot_ancestral_states = function(tree_file,
         
         #return(p)
 
-    } else if (summary_statistic == "MAP") {
+    } else 
+    if (summary_statistic == "MAP") {
 
         if (include_start_states) {
             print("Start states not yet implemented for MAP ancestral states.")
@@ -555,7 +565,8 @@ plot_ancestral_states = function(tree_file,
             p = p + guides(size=FALSE, order=4)
         }
 
-    } else if (summary_statistic == "mean") {
+    } else 
+    if (summary_statistic == "mean") {
     
         if (include_start_states) {
             print("Start states not implemented for mean ancestral states.")
@@ -593,7 +604,8 @@ plot_ancestral_states = function(tree_file,
         } else {
             p = p + guides(colour=FALSE)
         }
-    } else if (summary_statistic == "PieState") {
+    } else 
+    if (summary_statistic == "PieState") {
         if (include_start_states) {
             print("Start states not yet implemented for PieState ancestral states.")
             return()
@@ -659,7 +671,8 @@ plot_ancestral_states = function(tree_file,
  
         return(p_node)
 
-    } else if (summary_statistic == "PieRange") {
+    } else 
+    if (summary_statistic == "PieRange") {
      
         if (!("start_state_1" %in% colnames(attributes(t)$data))) {
             print("Start states not found in input tree.")
@@ -722,6 +735,21 @@ plot_ancestral_states = function(tree_file,
         pies_end = nodepie(dat_state_end,cols=1:(ncol(dat_state_end)-1),color=state_colors,alpha=alpha)
         pies_start = nodepie(dat_state_start,cols=1:(ncol(dat_state_start)-1),color=state_colors,alpha=alpha)
         
+
+        hjust=-tree$edge.length/2
+        
+        # Inset pies on nodes
+        p_node = inset.revgadgets(tree_view=p,
+                                insets=pies_end[node_idx],
+                                x="node",
+                                height=pie_diameter,
+                                width=pie_diameter,
+                                hjust=pie_nudge_x,
+                                vjust=pie_nudge_y)
+        
+        # Plot pies on shoulders
+        p_branch = inset.revgadgets(tree_view=p_node,
+
         pd = c( rep(tip_pie_diameter, n_tips), rep(node_pie_diameter, n_nodes-n_tips) )
         
         #n_expr = options()$expressions
@@ -743,6 +771,29 @@ plot_ancestral_states = function(tree_file,
                                 hjust=pie_nudge_x,
                                 vjust=pie_nudge_y)
         
+
+        p <- p_branch
+    } 
+    
+    
+    # if (use_state_colors) {
+    #     #print(state_colors)
+    #     #print(state_labels)
+    #     p = p + scale_color_manual(values=state_colors, breaks=as.vector(state_labels))
+    # }
+    # 
+    # p = p + scale_radius(range = node_size_range)
+    # p = p + theme(legend.position="left")
+    # 
+    # if (show_tree_scale)
+    # {
+    #    #p = p + theme_tree2()
+    # }
+    # p = p + ggtitle(title)
+    # # set visible area
+    # p = p + coord_cartesian(xlim = xlim_visible, ylim=ylim_visible, expand=TRUE)
+    # 
+
         
         p_all = p_shld + coord_cartesian(xlim = xlim_visible, ylim=ylim_visible, expand=TRUE)
         
