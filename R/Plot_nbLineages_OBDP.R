@@ -126,15 +126,13 @@ rev.plot.nbLineages = function( Kt_mean,
 # @param    start_time_trace_file                   character      The trace of the starting times along the MCMC chain.
 # @param    popSize_distribution_matrices_file      character      The Kt matrices computed with `fnInferAncestralPopSize` in RevBayes.
 # @param    trees_trace_file                        character      The corresponding trees.
-# @param    weight_trees_posterior                  bool           Whether to combine trees uniformly or weighted according to their posterior probabilities.
 #
 #
 ################################################################################
 
 rev.process.nbLineages = function( start_time_trace_file, 
                                    popSize_distribution_matrices_file,
-                                   trees_trace_file,
-                                   weight_trees_posterior=T ){
+                                   trees_trace_file ){
   
   ## Import start times
   start_time_trace_lines <- readLines(start_time_trace_file)
@@ -149,9 +147,6 @@ rev.process.nbLineages = function( start_time_trace_file,
   S <- length(Kt_trace[,1])/length(start_times)                                     # Number of time points (nb of lines / nb of trees)
   N <- length(Kt_trace)-1                                                           # Maximal number of hidden lineages
   names(Kt_trace) <- 0:N                                                            # Set names to the number of hidden lineages
-  NA_rows <- which(rowSums(is.na(Kt_trace))==N+1)                                   # Get rows with only NAs
-  Kt_trace[NA_rows,] <- cbind(rep(1, length(NA_rows)), 
-                              matrix(0, nrow=length(NA_rows), ncol=N))              # NA rows are considered to have 0 hidden lineages
   
   ## Import the corresponding tree : get the number of observed lineages through time (LTT)
   trees_trace <- read.table(trees_trace_file, header = T)
@@ -164,10 +159,26 @@ rev.process.nbLineages = function( start_time_trace_file,
     trees <- trees_trace
   }
   nb_trees <- length(trees$Iteration)                                               # Total number of trees
+  iterations <- trees$Iteration
   
-  ## Add the iterations to Kt_trace
-  iterations <- trees$Iteration[1:nb_trees]
   Kt_trace$Iteration <- rep(iterations, each=S)                                     # Add an iteration number column
+  
+  ## Remove iterations with only NAs
+  it_NAs <- c()
+  for (it in iterations){
+    if (all(is.na(Kt_trace[Kt_trace$Iteration == it,-(N+2)]))){
+      print(paste("Remove iteration", it, ": contains only NAs"))
+      it_NAs <- c(it_NAs, it)
+    }
+  }
+  Kt_trace <- Kt_trace[!(Kt_trace$Iteration %in% it_NAs),]
+  trees <- trees[!(trees$Iteration %in% it_NAs),]
+  nb_trees <- nb_trees - length(it_NAs)
+  start_times <- start_times[-(it_NAs+1-burnin)]
+  
+  NA_rows <- which(rowSums(is.na(Kt_trace))==N+1)                                   # Get the remaining rows with only NAs
+  Kt_trace[NA_rows,-(N+2)] <- cbind(rep(1, length(NA_rows)),
+                                    matrix(0, nrow=length(NA_rows), ncol=N))        # These rows are considered to have 0 hidden lineages
   
   ## Add root edges lengths
   get_root_age <- function(tree){ltt.plot.coords(tree)[2]}
@@ -181,42 +192,33 @@ rev.process.nbLineages = function( start_time_trace_file,
   Kt_mean <- matrix(0, nrow=S, ncol=N+1)
   observedLin_mean <- rep(0, S)
   timePoints <- seq(0, min(start_times), length.out = S)                            # Get S time points between 0 and the oldest starting time
-  posteriors <- exp(trees$Posterior-max(trees$Posterior))
-  posteriors <- posteriors/sum(posteriors)
-  if (weight_trees_posterior){
-    plot(trees$Iteration, posteriors, 
-         main="Posterior probabilities of the MCMC trees for weighting", 
-         xlab = "MCMC iteration", ylab = "Posterior probability")
-  }
   for (i in 1:nb_trees){
     ### Increment the distribution of number of hidden lineages
     it <- trees$Iteration[i]
     print(paste("Tree", it, "out of", trees$Iteration[nb_trees]))
     Kt <- Kt_trace[Kt_trace$Iteration==it,-which(names(Kt_trace)=="Iteration")]
     
-    Kt <- Kt/rowSums(Kt)                                    # Normalise lines to 1 (several lines at 0.9999 or 1.0001)
-    
-    if (weight_trees_posterior){
-      Kt_mean <- Kt_mean + Kt*posteriors[i]
+    if (any(Kt$`0`!=1)){                                      # Remove iterations with hidden lineages (only NA)
+      Kt <- Kt/rowSums(Kt)                                    # Normalise lines to 1 (several lines at 0.9999 or 1.0001)
+      Kt_mean <- Kt_mean + Kt/nb_trees
+      
+      ### Get the LTT coordinates
+      obd_tree <- collapse.singles(trees$obd_tree[[i]])       # Remove single nodes (ie. sampled ancestors)
+      LTT <- data.frame(ltt.plot.coords(obd_tree))            # Extract LTT coordinates
+      LTT$time <- round(LTT$time, 4)                          # Reduce precision (extant tips wrongly at time -0.000001)
+      
+      ### Increment number of observed lineages
+      getNbObservedLin <- function(t){
+        if (t < LTT$time[1]) return (0)
+        first_consecutive_time_point <- which(LTT$time >= t)[1]
+        return (LTT$N[first_consecutive_time_point])
+      }
+      observedLin <- sapply(timePoints, getNbObservedLin)
+      observedLin_mean <- observedLin_mean + observedLin/nb_trees
     }
-    else{ Kt_mean <- Kt_mean + Kt/length(iterations) }
-
-    ### Get the LTT coordinates
-    obd_tree <- collapse.singles(trees$obd_tree[[i]])       # Remove single nodes (ie. sampled ancestors)
-    LTT <- data.frame(ltt.plot.coords(obd_tree))            # Extract LTT coordinates
-    LTT$time <- round(LTT$time, 4)                          # Reduce precision (extant tips wrongly at time -0.000001)
-
-    ### Increment number of observed lineages
-    getNbObservedLin <- function(t){
-      if (t < LTT$time[1]) return (0)
-      first_consecutive_time_point <- which(LTT$time >= t)[1]
-      return (LTT$N[first_consecutive_time_point])
+    else{
+      print("Error : 0 hidden lineage")
     }
-    observedLin <- sapply(timePoints, getNbObservedLin)
-    if (weight_trees_posterior){
-      observedLin_mean <- observedLin_mean + observedLin*posteriors[i]
-    }
-    else{ observedLin_mean <- observedLin_mean + observedLin/length(iterations) }
   }
 
   ## Get the most probable number of hidden lineages (weighted mean according to their respective probabilities)
