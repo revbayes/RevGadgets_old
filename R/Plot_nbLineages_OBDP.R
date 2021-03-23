@@ -174,7 +174,7 @@ rev.process.nbLineages = function( start_time_trace_file,
   Kt_trace <- Kt_trace[!(Kt_trace$Iteration %in% it_NAs),]
   trees <- trees[!(trees$Iteration %in% it_NAs),]
   nb_trees <- nb_trees - length(it_NAs)
-  start_times <- start_times[-(it_NAs+1-burnin)]
+  if (!is.null(it_NAs)){start_times <- start_times[-(it_NAs+1-burnin)]}
   
   NA_rows <- which(rowSums(is.na(Kt_trace))==N+1)                                   # Get the remaining rows with only NAs
   Kt_trace[NA_rows,-(N+2)] <- cbind(rep(1, length(NA_rows)),
